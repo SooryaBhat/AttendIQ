@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Student Attendance Sessions</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/attendance.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Student</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html" class="active">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="attendance_history.html">
+            <span class="nav-icon">📜</span>
+            <span>History</span>
+          </a>
+          <a href="register_face.html">
+            <span class="nav-icon">📷</span>
+            <span>Register Face</span>
+          </a>
+          <a href="register_voice.html">
+            <span class="nav-icon">🎙️</span>
+            <span>Register Voice</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            View sessions
+            <br />
+            Join and mark attendance.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Attendance Sessions</h1>
+            <p>View active sessions and mark your attendance.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Student</strong>
+                <small>Active learner</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content attendance-page">
+        <section class="page-heading">
+          <div>
+            <h2>Active attendance sessions</h2>
+            <p>Join active sessions from your enrolled subjects and mark your attendance.</p>
+          </div>
+        </section>
+
+        <div class="attendance-container">
+          <!-- Active Sessions -->
+          <section class="session-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Active Sessions</h2>
+                <p>Sessions currently running for your enrolled subjects.</p>
+              </div>
+            </div>
+
+            <div id="activeSessionsContainer" class="sessions-grid">
+              <!-- Populated by JavaScript -->
+            </div>
+
+            <div id="noSessionsMessage" class="empty-state">
+              <div class="empty-state-icon">🎯</div>
+              <h3>No Active Sessions</h3>
+              <p>There are no active attendance sessions right now. Check back later or contact your instructor.</p>
+            </div>
+          </section>
+
+          <!-- Session Details Modal Preview -->
+          <section id="sessionDetailsSection" class="session-panel" style="display: none;">
+            <div class="panel-header">
+              <div>
+                <h2>Session Details</h2>
+                <p>Information about the current session.</p>
+              </div>
+              <button id="closeDetailsBtn" class="btn button-outline" type="button">✕ Close</button>
+            </div>
+
+            <div class="session-details-content">
+              <div class="details-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Subject</span>
+                  <span id="detailSubject" class="detail-value">--</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Instructor</span>
+                  <span id="detailInstructor" class="detail-value">--</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Session Duration</span>
+                  <span id="detailDuration" class="detail-value">--</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Started At</span>
+                  <span id="detailStartTime" class="detail-value">--</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Active Students</span>
+                  <span id="detailActiveStudents" class="detail-value">--</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Your Status</span>
+                  <span id="detailYourStatus" class="detail-value status-badge">--</span>
+                </div>
+              </div>
+
+              <div class="session-details-actions">
+                <button id="joinSessionBtn" type="button" class="btn btn-primary">
+                  👋 Join Session
+                </button>
+                <button id="markAttendanceBtn" type="button" class="btn btn-success" style="display: none;">
+                  ✓ Mark Attendance
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Attendance History -->
+          <section class="session-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Recent Attendance</h2>
+                <p>Your attendance records from the last 7 days.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="attendance-history-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceHistoryBody">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/attendance.js"></script>
+  </body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Faculty Attendance Sessions</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/attendance.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Faculty</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html" class="active">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="sessions.html">
+            <span class="nav-icon">🗓️</span>
+            <span>Sessions</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="attendance_report.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Run attendance
+            <br />
+            Start sessions and track attendance.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Attendance Sessions</h1>
+            <p>Create and manage real-time attendance sessions for your classes.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Faculty User</strong>
+                <small>Instructor</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content attendance-page">
+        <section class="page-heading">
+          <div>
+            <h2>Attendance session control</h2>
+            <p>Select a subject, start a session, and track student attendance in real-time.</p>
+          </div>
+        </section>
+
+        <div class="attendance-container">
+          <!-- Session Control Panel -->
+          <section class="session-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Session Control</h2>
+                <p>Select a subject and manage your attendance session.</p>
+              </div>
+            </div>
+
+            <div class="session-control">
+              <div class="form-row">
+                <label for="subjectSelect">Select Subject</label>
+                <select id="subjectSelect" name="subjectSelect" required>
+                  <option value="">-- Choose a subject --</option>
+                  <option value="CS-301">Advanced Algorithms (CS-301)</option>
+                  <option value="CS-302">Database Systems (CS-302)</option>
+                  <option value="CS-303">Web Development (CS-303)</option>
+                  <option value="CS-304">Machine Learning (CS-304)</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <label>&nbsp;</label>
+                <button
+                  id="startSessionBtn"
+                  type="button"
+                  class="btn btn-primary"
+                  disabled
+                >
+                  ▶ Start Session
+                </button>
+              </div>
+
+              <div id="sessionActive" class="session-active" style="display: none;">
+                <div class="session-info">
+                  <div class="info-block">
+                    <span class="info-label">Active Subject</span>
+                    <span id="activeSubject" class="info-value">--</span>
+                  </div>
+                  <div class="info-block">
+                    <span class="info-label">Session Status</span>
+                    <span id="sessionStatus" class="status-badge status-active">Active</span>
+                  </div>
+                  <div class="info-block">
+                    <span class="info-label">Session Timer</span>
+                    <span id="sessionTimer" class="timer-display">00:00:00</span>
+                  </div>
+                </div>
+
+                <div class="session-stats">
+                  <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                      <span class="stat-label">Active Students</span>
+                      <span id="activeStudentsCount" class="stat-value">0</span>
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-content">
+                      <span class="stat-label">Marked Present</span>
+                      <span id="markedPresentCount" class="stat-value">0</span>
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">✗</div>
+                    <div class="stat-content">
+                      <span class="stat-label">Absent</span>
+                      <span id="absentCount" class="stat-value">0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <label>&nbsp;</label>
+                  <button
+                    id="endSessionBtn"
+                    type="button"
+                    class="btn btn-danger"
+                  >
+                    ⏹ End Session
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Active Students List -->
+          <section id="studentsListSection" class="session-panel" style="display: none;">
+            <div class="panel-header">
+              <div>
+                <h2>Active Students</h2>
+                <p>Students currently in this attendance session.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="students-table">
+                <thead>
+                  <tr>
+                    <th>Roll No.</th>
+                    <th>Student Name</th>
+                    <th>Join Time</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Session History -->
+          <section class="session-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Recent Sessions</h2>
+                <p>Your attendance sessions from this week.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="sessions-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Duration</th>
+                    <th>Total Students</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                  </tr>
+                </thead>
+                <tbody id="sessionsHistoryBody">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/attendance.js"></script>
+  </body>
+</html>

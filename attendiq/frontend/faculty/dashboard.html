@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Faculty Dashboard</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Faculty</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html" class="active">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="sessions.html">
+            <span class="nav-icon">🗓️</span>
+            <span>Sessions</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="attendance_report.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Teaching dashboard
+            <br />
+            Manage classes, attendance, and reports.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Faculty Dashboard</h1>
+            <p>Run attendance sessions, generate QR codes, and review student records.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Faculty User</strong>
+                <small>Course instructor</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Teaching control panel</h2>
+            <p>Quick access to attendance functions, subject details, and student analytics.</p>
+          </div>
+        </section>
+
+        <div class="card-grid">
+          <article class="card">
+            <h3>Create Attendance Session</h3>
+            <p class="metric-value">New session</p>
+            <p>Schedule a new attendance session for your class.</p>
+          </article>
+
+          <article class="card">
+            <h3>Generate QR Code</h3>
+            <p class="metric-value">Ready</p>
+            <p>Produce QR attendance codes for fast student check-in.</p>
+          </article>
+
+          <article class="card">
+            <h3>Attendance Reports</h3>
+            <p class="metric-value">Review</p>
+            <p>Analyse attendance trends and session performance.</p>
+          </article>
+
+          <article class="card">
+            <h3>Subjects</h3>
+            <p class="metric-value">5 active</p>
+            <p>Manage your current subject list and class assignments.</p>
+          </article>
+        </div>
+
+        <div class="card-grid" style="margin-top: 1.5rem;">
+          <article class="card">
+            <h3>Student roster</h3>
+            <p>View enrolled students and attendance participation for each class.</p>
+          </article>
+          <article class="card">
+            <h3>Classroom workflow</h3>
+            <p>Prepare face and voice attendance sessions for future delivery.</p>
+          </article>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+  </body>
+</html>
+

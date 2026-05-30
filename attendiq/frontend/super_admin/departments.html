@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Departments</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Super Admin</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="departments.html" class="active">
+            <span class="nav-icon">🏢</span>
+            <span>Departments</span>
+          </a>
+          <a href="#department-admins">
+            <span class="nav-icon">👤</span>
+            <span>Department Admins</span>
+          </a>
+          <a href="#reports">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+          <a href="#settings">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Manage departments
+            <br />
+            Create, edit, and delete departments.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Department management</h1>
+            <p>Manage institutional departments and keep the directory in sync.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Super Admin</strong>
+                <small>Manage academic departments</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content subjects-page">
+        <section class="page-heading">
+          <div>
+            <h2>Department directory</h2>
+            <p>Create departments, assign codes, and maintain active academic units.</p>
+          </div>
+        </section>
+
+        <div class="subjects-container">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Create / edit department</h2>
+                <p>Define a department name, code, and optional description.</p>
+              </div>
+            </div>
+
+            <form id="departmentsForm" class="form-grid">
+              <div class="form-row">
+                <label for="departmentName">Department name</label>
+                <input id="departmentName" name="departmentName" type="text" placeholder="e.g. Computer Science" required />
+              </div>
+              <div class="form-row">
+                <label for="departmentCode">Department code</label>
+                <input id="departmentCode" name="departmentCode" type="text" placeholder="e.g. CSE" required />
+              </div>
+              <div class="form-row">
+                <label for="departmentDescription">Description</label>
+                <textarea id="departmentDescription" name="departmentDescription" placeholder="Optional notes about the department"></textarea>
+              </div>
+              <div class="form-row">
+                <label>&nbsp;</label>
+                <div class="form-actions">
+                  <button id="departmentSubmitButton" class="btn btn-primary" type="submit">Create department</button>
+                  <button id="departmentResetButton" class="btn btn-outline" type="button">Reset</button>
+                </div>
+              </div>
+            </form>
+            <p id="departmentStatusMessage" class="status-text" style="margin-top: 0.75rem;">Ready to create a new department.</p>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Department list</h2>
+                <p>View and manage existing departments across the institution.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="subject-table subject-table-rich">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="departmentsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script src="../assets/js/departments.js"></script>
+  </body>
+</html>

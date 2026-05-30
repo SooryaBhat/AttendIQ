@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Faculty Subject Management</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Faculty</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="sessions.html">
+            <span class="nav-icon">🗓️</span>
+            <span>Sessions</span>
+          </a>
+          <a href="subjects.html" class="active">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="attendance_report.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Manage subject listings
+            <br />
+            Create, edit, and share subject enrollment.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Subject Management</h1>
+            <p>Create subjects, manage enrollment, and share access with students.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Faculty User</strong>
+                <small>Subject manager</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content subjects-page">
+        <section class="page-heading">
+          <div>
+            <h2>Faculty subject dashboard</h2>
+            <p>Manage subjects, publish join links, and generate QR codes for student enrollment.</p>
+          </div>
+        </section>
+
+        <div class="subjects-container">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Create subject</h2>
+                <p>Provide the name, semester, section, and unique code for a new subject.</p>
+              </div>
+              <div class="form-actions">
+                <button id="resetSubjectForm" class="button button-outline" type="button">Reset</button>
+              </div>
+            </div>
+
+            <form id="subjectForm" class="form-grid">
+              <div class="form-row">
+                <label for="subjectName">Subject name</label>
+                <input id="subjectName" name="subjectName" type="text" placeholder="e.g. Advanced Algorithms" required />
+              </div>
+              <div class="form-row">
+                <label for="subjectCode">Subject code</label>
+                <input id="subjectCode" name="subjectCode" type="text" placeholder="e.g. ALG-301" required />
+              </div>
+              <div class="form-row">
+                <label for="subjectSemester">Semester</label>
+                <select id="subjectSemester" name="subjectSemester" required>
+                  <option value="">Select semester</option>
+                  <option>Spring 2026</option>
+                  <option>Summer 2026</option>
+                  <option>Fall 2026</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="subjectSection">Section</label>
+                <input id="subjectSection" name="subjectSection" type="text" placeholder="e.g. A1" required />
+              </div>
+              <div class="form-row">
+                <label for="subjectDescription">Description</label>
+                <textarea id="subjectDescription" name="subjectDescription" placeholder="Optional notes for the subject"></textarea>
+              </div>
+              <div class="form-row">
+                <label>&nbsp;</label>
+                <button type="submit" class="btn btn-primary">Save subject</button>
+              </div>
+            </form>
+            <p id="subjectFormStatus" class="status-text" style="margin-top: 0.5rem;">Create a new subject record and share access with students.</p>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Subjects table</h2>
+                <p>Manage existing subjects and perform quick actions for each class.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="subject-table subject-table-rich">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Code</th>
+                    <th>Semester</th>
+                    <th>Section</th>
+                    <th>Students</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="facultySubjectList"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div id="shareDialogOverlay" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <h3>Share subject</h3>
+            <p>Share the subject code, join link, and QR code with learners.</p>
+          </div>
+          <button id="closeShareDialog" class="button button-outline">Close</button>
+        </div>
+
+        <div class="modal-content">
+          <div class="share-field">
+            <label>Subject name</label>
+            <input id="shareSubjectName" type="text" readonly />
+          </div>
+          <div class="share-field">
+            <label>Subject code</label>
+            <div class="copy-pill">
+              <input id="shareSubjectCode" type="text" readonly />
+              <button id="copySubjectCode" class="button button-secondary">Copy Code</button>
+            </div>
+          </div>
+          <div class="share-field">
+            <label>Join link</label>
+            <div class="copy-pill">
+              <input id="shareJoinLink" type="text" readonly />
+              <button id="copyJoinLink" class="button button-secondary">Copy Link</button>
+            </div>
+          </div>
+          <div class="qr-preview">
+            <div id="shareQrCode" class="qr-placeholder">QR preview appears here</div>
+          </div>
+          <div class="share-actions">
+            <button id="downloadQrCode" class="button button-primary">Download QR</button>
+            <button id="shareSubjectButton" class="button button-secondary">Share</button>
+          </div>
+          <p id="shareStatus" class="status-text">Native sharing is used when available, otherwise copy manually.</p>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/subjects.js"></script>
+  </body>
+</html>

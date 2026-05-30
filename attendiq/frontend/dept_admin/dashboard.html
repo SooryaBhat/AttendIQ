@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Department Admin Dashboard</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Department Admin</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html" class="active">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="students.html">
+            <span class="nav-icon">🎓</span>
+            <span>Students</span>
+          </a>
+          <a href="faculty.html">
+            <span class="nav-icon">👨‍🏫</span>
+            <span>Faculty</span>
+          </a>
+          <a href="#subjects">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="#reports">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Department operations
+            <br />
+            Manage students, faculty, and attendance.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Department Admin Dashboard</h1>
+            <p>Track student engagement, faculty support, and subject attendance.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Dept Admin</strong>
+                <small>Active department profile</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Department overview</h2>
+            <p>Manage students, faculty, courses, and attendance performance in one place.</p>
+          </div>
+        </section>
+
+        <div class="card-grid">
+          <article class="card">
+            <h3>Students Count</h3>
+            <p class="metric-value">320</p>
+            <p>Currently enrolled students in your department.</p>
+          </article>
+
+          <article class="card">
+            <h3>Faculty Count</h3>
+            <p class="metric-value">24</p>
+            <p>Active teaching staff and academic coordinators.</p>
+          </article>
+
+          <article class="card">
+            <h3>Active Subjects</h3>
+            <p class="metric-value">18</p>
+            <p>Courses currently available for the semester.</p>
+          </article>
+
+          <article class="card">
+            <h3>Attendance %</h3>
+            <p class="metric-value">88%</p>
+            <p>Today's average attendance rate for your department.</p>
+          </article>
+        </div>
+
+        <div class="card-grid" style="margin-top: 1.5rem;">
+          <article class="card">
+            <h3>Course health</h3>
+            <p>Monitor subject participation and identify low-attendance classes.</p>
+          </article>
+          <article class="card">
+            <h3>Faculty coordination</h3>
+            <p>Assign faculty to classes, review schedules, and support attendance workflows.</p>
+          </article>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+  </body>
+</html>
+

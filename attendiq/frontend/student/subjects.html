@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Student Subjects</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Student</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance_history.html">
+            <span class="nav-icon">📜</span>
+            <span>Attendance History</span>
+          </a>
+          <a href="register_face.html">
+            <span class="nav-icon">📷</span>
+            <span>Register Face</span>
+          </a>
+          <a href="register_voice.html">
+            <span class="nav-icon">🎙️</span>
+            <span>Register Voice</span>
+          </a>
+          <a href="subjects.html" class="active">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Subject joining
+            <br />
+            Use codes or QR to join classes quickly.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>My subjects</h1>
+            <p>Review your enrolled subjects and join new classes by code, link, or QR scan.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Student User</strong>
+                <small>Active learner</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content subjects-page">
+        <section class="page-heading">
+          <div>
+            <h2>Student subject hub</h2>
+            <p>Manage your enrolled classes and join new subjects instantly.</p>
+          </div>
+        </section>
+
+        <div class="subjects-container">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Enrolled subjects</h2>
+                <p>See the subjects you are currently enrolled in for this semester.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="subject-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Code</th>
+                    <th>Instructor</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="studentSubjectList"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Join subject</h2>
+                <p>Join a new subject using code, join link, or QR scan.</p>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-row">
+                <label for="joinSubjectCode">Enter subject code</label>
+                <input id="joinSubjectCode" type="text" placeholder="e.g. AI-2026" />
+              </div>
+              <div class="form-row" style="align-self: end;">
+                <button id="joinCodeButton" class="btn btn-primary" type="button">Join by Code</button>
+              </div>
+              <div class="form-row">
+                <label for="joinSubjectLink">Open join link</label>
+                <input id="joinSubjectLink" type="url" placeholder="Paste join link" />
+              </div>
+              <div class="form-row" style="align-self: end;">
+                <button id="joinLinkButton" class="btn btn-secondary" type="button">Join by Link</button>
+              </div>
+            </div>
+
+            <div class="scanner-card">
+              <div class="panel-header" style="padding: 0; margin: 0;">
+                <div>
+                  <h2>Scan subject QR</h2>
+                  <p>Use your device camera to join with a QR-generated link.</p>
+                </div>
+              </div>
+              <div id="qr-reader"></div>
+              <button id="qrToggleButton" class="button button-primary" type="button">Start QR scan</button>
+              <p id="qrScanStatus" class="status-text">Click the button to begin scanning.</p>
+            </div>
+
+            <p id="studentJoinStatus" class="status-text">Joined subjects will be added to your table above.</p>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/subjects.js"></script>
+  </body>
+</html>

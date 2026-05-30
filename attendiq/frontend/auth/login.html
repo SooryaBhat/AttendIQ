@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Login</title>
+    <link rel="stylesheet" href="../assets/css/auth.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">AIQ</span>
+          <div>
+            <h1>AttendIQ</h1>
+            <p>Campus attendance ERP</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <span>Secure access for institutional users only</span>
+          <a href="javascript:void(0);" class="support-link">Contact support</a>
+        </div>
+      </header>
+
+      <main class="login-layout">
+        <aside class="intro-panel">
+          <div class="panel-content">
+            <span class="eyebrow">Enterprise access</span>
+            <h2>Welcome back to AttendIQ</h2>
+            <p>
+              Log in with your campus credentials to manage departments, faculty, students,
+              and attendance workflows from a single administrative portal.
+            </p>
+
+            <div class="feature-list">
+              <div class="feature-item">
+                <span class="feature-icon">✓</span>
+                <p>Role-based dashboards</p>
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">✓</span>
+                <p>Department and student management</p>
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">✓</span>
+                <p>Attendance tracking and reporting</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="login-panel">
+          <div class="login-card">
+            <div class="card-header">
+              <h2>Sign in</h2>
+              <p>Super Admin, Department Admin, Faculty, or Student</p>
+            </div>
+
+            <form id="loginForm" class="login-form" autocomplete="off">
+              <div class="form-row">
+                <label for="role">Role</label>
+                <select id="role" name="role" required>
+                  <option value="">Select your role</option>
+                  <option value="super_admin">Super Admin</option>
+                  <option value="dept_admin">Department Admin</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="student">Student</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <label for="email">Institutional email</label>
+                <input id="email" name="email" type="email" placeholder="name@college.edu" required />
+              </div>
+
+              <div class="form-row">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" placeholder="Enter your password" required />
+              </div>
+
+              <div class="form-footer">
+                <button type="submit" class="btn-primary">Sign in</button>
+                <span class="status-message" id="statusMessage"></span>
+              </div>
+            </form>
+
+            <div class="demo-details">
+              <p>Demo credentials for each role:</p>
+              <ul>
+                <li><strong>Super Admin:</strong> super@attendiq.edu / superadmin123</li>
+                <li><strong>Department Admin:</strong> deptadmin@attendiq.edu / deptadmin123</li>
+                <li><strong>Faculty:</strong> faculty@attendiq.edu / faculty123</li>
+                <li><strong>Student:</strong> student@attendiq.edu / student123</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script src="../assets/js/auth.js"></script>
+  </body>
+</html>
+
