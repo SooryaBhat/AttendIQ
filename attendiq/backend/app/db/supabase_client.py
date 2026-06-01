@@ -1,7 +1,10 @@
-# Supabase connection client (placeholder)
 # ============================================================
 #  AttendIQ — Supabase Client
 #  File: backend/app/db/supabase_client.py
+#
+#  FIX: Use SUPABASE_SERVICE_ROLE_KEY for all backend queries.
+#  The anon/publishable key is blocked by RLS on the server side.
+#  The service role key bypasses RLS safely from the backend.
 # ============================================================
 
 import os
@@ -10,12 +13,10 @@ from functools import lru_cache
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# Load environment variables from .env file
 load_dotenv()
 
 
 def _get_env(key: str) -> str:
-    """Read a required environment variable; raise clearly if missing."""
     value = os.getenv(key)
     if not value:
         raise EnvironmentError(
@@ -28,32 +29,17 @@ def _get_env(key: str) -> str:
 @lru_cache(maxsize=1)
 def get_supabase_client() -> Client:
     """
-    Create and return a reusable Supabase client using the service role key.
+    Backend Supabase client using the SERVICE ROLE KEY.
 
-    Uses @lru_cache so the client is instantiated only once
-    for the lifetime of the application process.
-
-    The service role key is used for all server-side database operations
-    to ensure full administrative access. The publishable key is available
-    separately for frontend/public usage.
-
-    Returns:
-        supabase.Client: Authenticated Supabase client instance with service role.
-
-    Raises:
-        EnvironmentError: If SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY
-                          are missing from the environment.
+    Why service role and not anon key?
+    - The anon key respects RLS (Row Level Security).
+    - Without RLS policies defined, ALL queries are denied.
+    - The service role key bypasses RLS for trusted server-side code.
+    - Never expose this key in frontend code.
     """
     url: str = _get_env("SUPABASE_URL")
     key: str = _get_env("SUPABASE_SERVICE_ROLE_KEY")
+    return create_client(url, key)
 
-    client: Client = create_client(url, key)
-    return client
-
-
-# ============================================================
-#  Module-level singleton — import this directly anywhere:
-#  from app.db.supabase_client import supabase
-# ============================================================
 
 supabase: Client = get_supabase_client()
