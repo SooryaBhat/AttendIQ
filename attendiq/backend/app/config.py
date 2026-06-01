@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # ----------------------------------------------------------
     SUPABASE_URL:               str
     SUPABASE_PUBLISHABLE_KEY:   str
+    SUPABASE_SERVICE_ROLE_KEY:  str
 
     # ----------------------------------------------------------
     #  JWT Authentication

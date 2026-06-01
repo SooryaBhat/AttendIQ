@@ -1,67 +1,15 @@
-/*
+﻿/*
   Attendance Session Module for AttendIQ
   Handles faculty and student attendance functionality
 */
 
-// Dummy Data
-const dummySubjects = [
-  { id: "CS-301", name: "Advanced Algorithms", code: "CS-301", instructor: "Dr. Smith" },
-  { id: "CS-302", name: "Database Systems", code: "CS-302", instructor: "Prof. Johnson" },
-  { id: "CS-303", name: "Web Development", code: "CS-303", instructor: "Dr. Williams" },
-  { id: "CS-304", name: "Machine Learning", code: "CS-304", instructor: "Prof. Brown" },
-];
-
-const dummyStudents = [
-  { id: 1, rollNo: "CS001", name: "Alice Johnson", joinTime: "10:05 AM" },
-  { id: 2, rollNo: "CS002", name: "Bob Smith", joinTime: "10:08 AM" },
-  { id: 3, rollNo: "CS003", name: "Carol Davis", joinTime: "10:10 AM" },
-  { id: 4, rollNo: "CS004", name: "David Wilson", joinTime: "10:03 AM" },
-  { id: 5, rollNo: "CS005", name: "Emma Brown", joinTime: "10:12 AM" },
-  { id: 6, rollNo: "CS006", name: "Frank Miller", joinTime: "10:07 AM" },
-];
-
-const dummySessionHistory = [
-  {
-    subject: "Advanced Algorithms",
-    date: "2026-05-28",
-    duration: "45 min",
-    totalStudents: 35,
-    present: 34,
-    absent: 1,
-  },
-  {
-    subject: "Database Systems",
-    date: "2026-05-27",
-    duration: "50 min",
-    totalStudents: 32,
-    present: 31,
-    absent: 1,
-  },
-  {
-    subject: "Web Development",
-    date: "2026-05-26",
-    duration: "48 min",
-    totalStudents: 40,
-    present: 38,
-    absent: 2,
-  },
-];
-
-const dummyAttendanceHistory = [
-  { subject: "Advanced Algorithms", date: "2026-05-28", time: "10:15 AM", status: "present" },
-  { subject: "Database Systems", date: "2026-05-27", time: "09:45 AM", status: "present" },
-  { subject: "Web Development", date: "2026-05-26", time: "02:30 PM", status: "present" },
-  { subject: "Machine Learning", date: "2026-05-25", time: "11:20 AM", status: "absent" },
-];
-
 // Global State
 let sessionState = {
   isActive: false,
-  selectedSubject: null,
+  selectedSession: null,
   startTime: null,
   elapsedSeconds: 0,
-  activeStudents: [],
-  attendanceRecords: {},
+  currentStudent: null,
 };
 
 let sessionTimerInterval = null;
@@ -77,6 +25,8 @@ function initializeEventListeners() {
   const startSessionBtn = document.getElementById("startSessionBtn");
   const endSessionBtn = document.getElementById("endSessionBtn");
   const closeDetailsBtn = document.getElementById("closeDetailsBtn");
+  const joinSessionBtn = document.getElementById("joinSessionBtn");
+  const markAttendanceBtn = document.getElementById("markAttendanceBtn");
 
   if (subjectSelect) {
     subjectSelect.addEventListener("change", handleSubjectChange);
@@ -93,10 +43,17 @@ function initializeEventListeners() {
   if (closeDetailsBtn) {
     closeDetailsBtn.addEventListener("click", closeSessionDetails);
   }
+
+  if (joinSessionBtn) {
+    joinSessionBtn.addEventListener("click", handleJoinSession);
+  }
+
+  if (markAttendanceBtn) {
+    markAttendanceBtn.addEventListener("click", handleMarkAttendance);
+  }
 }
 
 function initializePage() {
-  // Determine which page we're on based on file path or page content
   const path = window.location.pathname.toLowerCase();
 
   if (path.includes("faculty/attendance")) {
@@ -106,109 +63,202 @@ function initializePage() {
   }
 }
 
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("attendiq_user")) || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function formatTime(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+function showError(message) {
+  alert("❌ " + message);
+  console.error(message);
+}
+
+function showSuccess(message) {
+  alert("✓ " + message);
+}
+
 // ============================================================================
 // FACULTY ATTENDANCE MODULE
 // ============================================================================
 
-function initializeFacultyAttendance() {
-  // Initialize session history table
-  renderSessionsHistory();
-
-  // Simulate active sessions from previous attempts
-  const hasActiveSession = sessionStorage.getItem("hasActiveSession");
-  if (hasActiveSession === "true") {
-    const savedSubject = sessionStorage.getItem("activeSubject");
-    if (savedSubject) {
-      showSessionActive(savedSubject);
-      sessionState.elapsedSeconds = parseInt(sessionStorage.getItem("elapsedSeconds") || "0");
-      startSessionTimer();
-      // Simulate student activity
-      simulateStudentActivity();
+async function initializeFacultyAttendance() {
+  try {
+    const user = getStoredUser();
+    if (!user) {
+      showError("User not found. Please log in again.");
+      return;
     }
+
+    await renderSessionsHistory();
+  } catch (error) {
+    showError("Unable to initialize faculty attendance: " + error.message);
   }
 }
 
 function handleSubjectChange(event) {
   const startSessionBtn = document.getElementById("startSessionBtn");
-  startSessionBtn.disabled = !event.target.value;
+  if (startSessionBtn) {
+    startSessionBtn.disabled = !event.target.value;
+  }
 }
 
-function startSession() {
+async function startSession() {
   const subjectSelect = document.getElementById("subjectSelect");
-  const selectedValue = subjectSelect.value;
+  if (!subjectSelect) return;
 
-  if (!selectedValue) return;
+  const subjectId = subjectSelect.value;
+  if (!subjectId) return;
 
-  const subject = dummySubjects.find((s) => s.id === selectedValue);
-  if (!subject) return;
+  try {
+    const user = getStoredUser();
+    if (!user) {
+      showError("User not found. Please log in again.");
+      return;
+    }
 
-  // Update global state
-  sessionState.isActive = true;
-  sessionState.selectedSubject = subject;
-  sessionState.startTime = new Date();
-  sessionState.elapsedSeconds = 0;
-  sessionState.activeStudents = [...dummyStudents];
-  sessionState.attendanceRecords = {};
+    const sessionPayload = {
+      subject_id: subjectId,
+      faculty_id: user.id,
+      session_name: `Session ${new Date().toLocaleTimeString()}`,
+    };
 
-  // Initialize attendance records
-  dummyStudents.forEach((student) => {
-    sessionState.attendanceRecords[student.id] = "pending";
-  });
+    const createdSession = await createAttendanceSession(sessionPayload);
+    const startedSession = await startAttendanceSession(createdSession.id);
 
-  // Save to session storage
-  sessionStorage.setItem("hasActiveSession", "true");
-  sessionStorage.setItem("activeSubject", JSON.stringify(subject));
+    sessionState.isActive = true;
+    sessionState.selectedSession = startedSession;
+    sessionState.startTime = new Date();
+    sessionState.elapsedSeconds = 0;
 
-  // Update UI
-  showSessionActive(subject);
-  renderStudentsTable();
-  startSessionTimer();
-  simulateStudentActivity();
+    showSessionActive(startedSession);
+    await renderAttendanceRecords(startedSession.id);
+    startSessionTimer();
 
-  // Disable subject select during session
-  subjectSelect.disabled = true;
+    subjectSelect.disabled = true;
+    showSuccess("Attendance session started successfully.");
+  } catch (error) {
+    showError("Failed to start session: " + error.message);
+  }
 }
 
-function endSession() {
+async function renderAttendanceRecords(sessionId) {
+  const tbody = document.getElementById("studentsTableBody");
+  const activeStudentsCount = document.getElementById("activeStudentsCount");
+  const markedPresentCount = document.getElementById("markedPresentCount");
+  const absentCountEl = document.getElementById("absentCount");
+
+  if (!tbody) return;
+
+  try {
+    const records = await getSessionAttendanceRecords(sessionId);
+    if (!records || records.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No attendance records yet.</td></tr>';
+      if (activeStudentsCount) activeStudentsCount.textContent = "0";
+      if (markedPresentCount) markedPresentCount.textContent = "0";
+      if (absentCountEl) absentCountEl.textContent = "0";
+      return;
+    }
+
+    tbody.innerHTML = records
+      .map((record) => {
+        const status = record.attendance_status || "pending";
+        const statusClass = status === "present" ? "present" : status === "absent" ? "absent" : "pending";
+        return `
+        <tr>
+          <td>${record.student_id.substring(0, 8)}</td>
+          <td>${record.student_id.substring(0, 8)}</td>
+          <td>${record.marked_at ? new Date(record.marked_at).toLocaleTimeString() : "-"}</td>
+          <td><span class="status-pill ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span></td>
+          <td>
+            <div class="table-actions">
+              <button class="action-btn mark-present" onclick="markStudentAttendance('${record.student_id}', 'present')">✓</button>
+              <button class="action-btn mark-absent" onclick="markStudentAttendance('${record.student_id}', 'absent')">✗</button>
+            </div>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    const presentCount = records.filter((r) => r.attendance_status === "present").length;
+    const absentCount = records.filter((r) => r.attendance_status === "absent").length;
+
+    if (activeStudentsCount) activeStudentsCount.textContent = records.length;
+    if (markedPresentCount) markedPresentCount.textContent = presentCount;
+    if (absentCountEl) absentCountEl.textContent = absentCount;
+  } catch (error) {
+    console.error(error);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:red;">Failed to load attendance records.</td></tr>';
+  }
+}
+
+async function markStudentAttendance(studentId, status) {
+  if (!sessionState.selectedSession) {
+    showError("No active session selected.");
+    return;
+  }
+
+  try {
+    await markAttendance(sessionState.selectedSession.id, studentId, status);
+    await renderAttendanceRecords(sessionState.selectedSession.id);
+    showSuccess(`Student marked ${status}.`);
+  } catch (error) {
+    showError("Failed to update student attendance: " + error.message);
+  }
+}
+
+async function endSession() {
+  if (!sessionState.selectedSession) {
+    showError("No active session to end.");
+    return;
+  }
+
   const confirmed = confirm("Are you sure you want to end this attendance session?");
   if (!confirmed) return;
 
-  // Stop timer
-  if (sessionTimerInterval) {
-    clearInterval(sessionTimerInterval);
+  try {
+    await endAttendanceSession(sessionState.selectedSession.id);
+
+    if (sessionTimerInterval) {
+      clearInterval(sessionTimerInterval);
+    }
+
+    sessionState.isActive = false;
+    sessionState.selectedSession = null;
+    sessionState.startTime = null;
+    sessionState.elapsedSeconds = 0;
+
+    const sessionActive = document.getElementById("sessionActive");
+    const studentsListSection = document.getElementById("studentsListSection");
+    const subjectSelect = document.getElementById("subjectSelect");
+    const startSessionBtn = document.getElementById("startSessionBtn");
+
+    if (sessionActive) sessionActive.style.display = "none";
+    if (studentsListSection) studentsListSection.style.display = "none";
+    if (subjectSelect) {
+      subjectSelect.disabled = false;
+      subjectSelect.value = "";
+    }
+    if (startSessionBtn) startSessionBtn.disabled = true;
+
+    await renderSessionsHistory();
+    showSuccess("Attendance session ended successfully.");
+  } catch (error) {
+    showError("Failed to end session: " + error.message);
   }
-
-  // Update state
-  sessionState.isActive = false;
-  sessionState.startTime = null;
-
-  // Clear session storage
-  sessionStorage.removeItem("hasActiveSession");
-  sessionStorage.removeItem("activeSubject");
-  sessionStorage.removeItem("elapsedSeconds");
-
-  // Hide active session UI
-  const sessionActive = document.getElementById("sessionActive");
-  const studentsListSection = document.getElementById("studentsListSection");
-  const subjectSelect = document.getElementById("subjectSelect");
-
-  if (sessionActive) sessionActive.style.display = "none";
-  if (studentsListSection) studentsListSection.style.display = "none";
-  if (subjectSelect) {
-    subjectSelect.disabled = false;
-    subjectSelect.value = "";
-  }
-
-  const startSessionBtn = document.getElementById("startSessionBtn");
-  if (startSessionBtn) startSessionBtn.disabled = true;
-
-  // Add to history
-  addToSessionHistory();
-
-  alert("Attendance session ended successfully!");
 }
 
-function showSessionActive(subject) {
+function showSessionActive(session) {
   const sessionActive = document.getElementById("sessionActive");
   const activeSubject = document.getElementById("activeSubject");
   const studentsListSection = document.getElementById("studentsListSection");
@@ -216,7 +266,7 @@ function showSessionActive(subject) {
   if (sessionActive) {
     sessionActive.style.display = "block";
     if (activeSubject) {
-      activeSubject.textContent = `${subject.name} (${subject.code})`;
+      activeSubject.textContent = session.session_name || `Session ${session.id.substring(0, 8)}`;
     }
   }
 
@@ -233,11 +283,6 @@ function startSessionTimer() {
   sessionTimerInterval = setInterval(() => {
     sessionState.elapsedSeconds++;
     updateTimerDisplay();
-
-    // Save elapsed time every 5 seconds
-    if (sessionState.elapsedSeconds % 5 === 0) {
-      sessionStorage.setItem("elapsedSeconds", sessionState.elapsedSeconds);
-    }
   }, 1000);
 }
 
@@ -245,271 +290,157 @@ function updateTimerDisplay() {
   const sessionTimer = document.getElementById("sessionTimer");
   if (!sessionTimer) return;
 
-  const hours = Math.floor(sessionState.elapsedSeconds / 3600);
-  const minutes = Math.floor((sessionState.elapsedSeconds % 3600) / 60);
-  const seconds = sessionState.elapsedSeconds % 60;
-
-  sessionTimer.textContent = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-    2,
-    "0"
-  )}:${String(seconds).padStart(2, "0")}`;
+  sessionTimer.textContent = formatTime(sessionState.elapsedSeconds);
 }
 
-function renderStudentsTable() {
-  const tbody = document.getElementById("studentsTableBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = sessionState.activeStudents.map((student) => {
-    const status = sessionState.attendanceRecords[student.id] || "pending";
-    const statusClass = status === "present" ? "present" : status === "absent" ? "absent" : "pending";
-
-    return `
-      <tr>
-        <td>${student.rollNo}</td>
-        <td>${student.name}</td>
-        <td>${student.joinTime}</td>
-        <td><span class="status-pill ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span></td>
-        <td>
-          <div class="table-actions">
-            <button class="action-btn mark-present" onclick="markStudentAttendance(${student.id}, 'present')">✓</button>
-            <button class="action-btn mark-absent" onclick="markStudentAttendance(${student.id}, 'absent')">✗</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  });
-
-  // Update counts
-  const presentCount = sessionState.activeStudents.filter(
-    (s) => sessionState.attendanceRecords[s.id] === "present"
-  ).length;
-  const absentCount = sessionState.activeStudents.filter(
-    (s) => sessionState.attendanceRecords[s.id] === "absent"
-  ).length;
-
-  const activeStudentsCount = document.getElementById("activeStudentsCount");
-  const markedPresentCount = document.getElementById("markedPresentCount");
-  const absentCountEl = document.getElementById("absentCount");
-
-  if (activeStudentsCount) activeStudentsCount.textContent = sessionState.activeStudents.length;
-  if (markedPresentCount) markedPresentCount.textContent = presentCount;
-  if (absentCountEl) absentCountEl.textContent = absentCount;
-}
-
-function markStudentAttendance(studentId, status) {
-  sessionState.attendanceRecords[studentId] = status;
-  renderStudentsTable();
-}
-
-function simulateStudentActivity() {
-  // Randomly add/update student attendance over time
-  if (!sessionState.isActive) return;
-
-  // Randomly mark some students as present or absent
-  const randomStudent = sessionState.activeStudents[Math.floor(Math.random() * sessionState.activeStudents.length)];
-  const randomStatus = Math.random() > 0.3 ? "present" : "absent";
-
-  if (sessionState.attendanceRecords[randomStudent.id] === "pending") {
-    sessionState.attendanceRecords[randomStudent.id] = randomStatus;
-    renderStudentsTable();
-  }
-
-  // Schedule next simulation in 3-8 seconds
-  setTimeout(simulateStudentActivity, 3000 + Math.random() * 5000);
-}
-
-function renderSessionsHistory() {
+async function renderSessionsHistory() {
   const tbody = document.getElementById("sessionsHistoryBody");
   if (!tbody) return;
 
-  tbody.innerHTML = dummySessionHistory
-    .map(
-      (session) => `
-    <tr>
-      <td>${session.subject}</td>
-      <td>${new Date(session.date).toLocaleDateString()}</td>
-      <td>${session.duration}</td>
-      <td>${session.totalStudents}</td>
-      <td><span class="status-pill present">${session.present}</span></td>
-      <td><span class="status-pill absent">${session.absent}</span></td>
-    </tr>
-  `
-    )
-    .join("");
-}
+  try {
+    const sessions = await getAttendanceSessions();
+    if (!sessions || sessions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No sessions found.</td></tr>';
+      return;
+    }
 
-function addToSessionHistory() {
-  const subject = sessionState.selectedSubject;
-  if (!subject) return;
+    tbody.innerHTML = sessions
+      .map((session) => {
+        const start = session.start_time ? new Date(session.start_time) : null;
+        const end = session.end_time ? new Date(session.end_time) : null;
+        const duration = start && end ? `${Math.max(0, Math.floor((end - start) / 60000))} min` : "-";
 
-  const duration = Math.floor(sessionState.elapsedSeconds / 60);
-  const totalStudents = sessionState.activeStudents.length;
-  const presentCount = sessionState.activeStudents.filter(
-    (s) => sessionState.attendanceRecords[s.id] === "present"
-  ).length;
-  const absentCount = totalStudents - presentCount;
-
-  const newSession = {
-    subject: subject.name,
-    date: new Date().toISOString().split("T")[0],
-    duration: `${duration} min`,
-    totalStudents,
-    present: presentCount,
-    absent: absentCount,
-  };
-
-  dummySessionHistory.unshift(newSession);
-  renderSessionsHistory();
+        return `
+        <tr>
+          <td>${session.session_name || `Session ${session.id.substring(0, 8)}`}</td>
+          <td>${start ? start.toLocaleDateString() : "-"}</td>
+          <td>${duration}</td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+        </tr>
+      `;
+      })
+      .join("");
+  } catch (error) {
+    console.error(error);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:red;">Failed to load sessions.</td></tr>';
+  }
 }
 
 // ============================================================================
 // STUDENT ATTENDANCE MODULE
 // ============================================================================
 
-function initializeStudentAttendance() {
-  renderActiveSessions();
-  renderAttendanceHistory();
+async function initializeStudentAttendance() {
+  try {
+    const user = getStoredUser();
+    if (!user) {
+      showError("User not found. Please log in again.");
+      return;
+    }
+
+    sessionState.currentStudent = user;
+    await renderActiveSessions();
+    await renderAttendanceHistory();
+  } catch (error) {
+    showError("Unable to initialize student attendance: " + error.message);
+  }
 }
 
-function renderActiveSessions() {
+async function renderActiveSessions() {
   const container = document.getElementById("activeSessionsContainer");
   const noSessionsMessage = document.getElementById("noSessionsMessage");
 
   if (!container) return;
 
-  // Show 2-3 active sessions
-  const activeSessions = [
-    {
-      id: "S001",
-      subject: "Advanced Algorithms",
-      code: "CS-301",
-      instructor: "Dr. Smith",
-      startTime: "10:00 AM",
-      activeStudents: 28,
-      status: "active",
-      joined: false,
-    },
-    {
-      id: "S002",
-      subject: "Web Development",
-      code: "CS-303",
-      instructor: "Dr. Williams",
-      startTime: "02:00 PM",
-      activeStudents: 35,
-      status: "active",
-      joined: false,
-    },
-  ];
+  try {
+    const sessions = await getAttendanceSessions();
+    const activeSessions = sessions.filter((s) => s.status === "started");
 
-  if (activeSessions.length === 0 && noSessionsMessage) {
-    noSessionsMessage.style.display = "grid";
-    container.innerHTML = "";
-    return;
+    if (activeSessions.length === 0) {
+      if (noSessionsMessage) noSessionsMessage.style.display = "grid";
+      container.innerHTML = "";
+      return;
+    }
+
+    if (noSessionsMessage) noSessionsMessage.style.display = "none";
+
+    container.innerHTML = activeSessions
+      .map((session) => {
+        const startedAt = session.start_time ? new Date(session.start_time).toLocaleTimeString() : "-";
+        return `
+        <div class="session-card" onclick="viewSessionDetails('${session.id}', this)">
+          <div class="session-card-header">
+            <div class="session-card-title">
+              <h3>${session.session_name || `Session ${session.id.substring(0, 8)}`}</h3>
+              <span class="subject-code">${session.subject_id.substring(0, 8)}</span>
+            </div>
+            <div class="session-card-badge">🔴 Live</div>
+          </div>
+
+          <div class="session-card-info">
+            <div class="session-card-info-item">
+              <span class="session-card-info-label">Started</span>
+              <span class="session-card-info-value">${startedAt}</span>
+            </div>
+          </div>
+
+          <div class="session-card-footer">
+            <button class="session-card-btn primary" onclick="handleJoinSessionClick('${session.id}', event)">👋 Join Session</button>
+            <button class="session-card-btn" onclick="viewSessionDetails('${session.id}', this.closest('.session-card'), event)">ℹ️ Details</button>
+          </div>
+        </div>
+      `;
+      })
+      .join("");
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:red;">Failed to load active sessions.</div>';
   }
-
-  if (noSessionsMessage) {
-    noSessionsMessage.style.display = "none";
-  }
-
-  container.innerHTML = activeSessions
-    .map(
-      (session) => `
-    <div class="session-card" onclick="viewSessionDetails('${session.id}', this)">
-      <div class="session-card-header">
-        <div class="session-card-title">
-          <h3>${session.subject}</h3>
-          <span class="subject-code">${session.code}</span>
-        </div>
-        <div class="session-card-badge">
-          🔴 Live
-        </div>
-      </div>
-
-      <div class="session-card-info">
-        <div class="session-card-info-item">
-          <span class="session-card-info-label">Instructor</span>
-          <span class="session-card-info-value">${session.instructor}</span>
-        </div>
-        <div class="session-card-info-item">
-          <span class="session-card-info-label">Started</span>
-          <span class="session-card-info-value">${session.startTime}</span>
-        </div>
-        <div class="session-card-info-item">
-          <span class="session-card-info-label">Active Students</span>
-          <span class="session-card-info-value">${session.activeStudents}</span>
-        </div>
-      </div>
-
-      <div class="session-card-footer">
-        <button class="session-card-btn primary" onclick="joinSession('${session.id}', event)">
-          👋 Join Session
-        </button>
-        <button class="session-card-btn" onclick="viewSessionDetails('${session.id}', this.closest('.session-card'), event)">
-          ℹ️ Details
-        </button>
-      </div>
-    </div>
-  `
-    )
-    .join("");
 }
 
-function viewSessionDetails(sessionId, cardElement, event) {
-  if (event) {
-    event.stopPropagation();
-  }
+async function viewSessionDetails(sessionId, cardElement, event) {
+  if (event) event.stopPropagation();
 
   const detailsSection = document.getElementById("sessionDetailsSection");
   if (!detailsSection) return;
 
-  const sessionData = {
-    S001: {
-      subject: "Advanced Algorithms",
-      instructor: "Dr. Smith",
-      duration: "45 minutes",
-      startTime: "10:00 AM",
-      activeStudents: "28 students",
-      status: "Joined",
-    },
-    S002: {
-      subject: "Web Development",
-      instructor: "Dr. Williams",
-      duration: "50 minutes",
-      startTime: "02:00 PM",
-      activeStudents: "35 students",
-      status: "Not Joined",
-    },
-  };
+  try {
+    const session = await getAttendanceSession(sessionId);
+    const records = await getSessionAttendanceRecords(sessionId);
+    const joinedRecord = records.find((record) => record.student_id === sessionState.currentStudent?.id);
 
-  const data = sessionData[sessionId] || sessionData["S001"];
+    document.getElementById("detailSubject").textContent = session.session_name || `Session ${session.id.substring(0, 8)}`;
+    document.getElementById("detailInstructor").textContent = "Instructor";
+    document.getElementById("detailDuration").textContent = session.start_time ? `${Math.max(0, Math.floor((new Date() - new Date(session.start_time)) / 60000))} min` : "-";
+    document.getElementById("detailStartTime").textContent = session.start_time ? new Date(session.start_time).toLocaleTimeString() : "-";
+    document.getElementById("detailActiveStudents").textContent = `${records.length} students`;
+    document.getElementById("detailYourStatus").textContent = joinedRecord ? joinedRecord.attendance_status || "Pending" : "Not Joined";
 
-  document.getElementById("detailSubject").textContent = data.subject;
-  document.getElementById("detailInstructor").textContent = data.instructor;
-  document.getElementById("detailDuration").textContent = data.duration;
-  document.getElementById("detailStartTime").textContent = data.startTime;
-  document.getElementById("detailActiveStudents").textContent = data.activeStudents;
-
-  const statusEl = document.getElementById("detailYourStatus");
-  if (statusEl) {
-    statusEl.textContent = data.status;
-    statusEl.className = "detail-value status-badge " + (data.status === "Joined" ? "status-active" : "status-pending");
-  }
-
-  const joinBtn = document.getElementById("joinSessionBtn");
-  const markBtn = document.getElementById("markAttendanceBtn");
-
-  if (joinBtn && markBtn) {
-    if (data.status === "Joined") {
-      joinBtn.style.display = "none";
-      markBtn.style.display = "inline-block";
-    } else {
-      joinBtn.style.display = "inline-block";
-      markBtn.style.display = "none";
+    const statusEl = document.getElementById("detailYourStatus");
+    if (statusEl) {
+      statusEl.className = "detail-value status-badge " + (joinedRecord ? "status-active" : "status-pending");
     }
-  }
 
-  detailsSection.style.display = "block";
-  detailsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    const joinBtn = document.getElementById("joinSessionBtn");
+    const markBtn = document.getElementById("markAttendanceBtn");
+    if (joinBtn && markBtn) {
+      if (joinedRecord) {
+        joinBtn.style.display = "none";
+        markBtn.style.display = "inline-block";
+      } else {
+        joinBtn.style.display = "inline-block";
+        markBtn.style.display = "none";
+      }
+    }
+
+    sessionState.selectedSession = session;
+    detailsSection.style.display = "block";
+    detailsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    showError("Failed to load session details: " + error.message);
+  }
 }
 
 function closeSessionDetails() {
@@ -519,42 +450,82 @@ function closeSessionDetails() {
   }
 }
 
-function joinSession(sessionId, event) {
-  if (event) {
-    event.stopPropagation();
+function handleJoinSessionClick(sessionId, event) {
+  if (event) event.stopPropagation();
+  sessionState.selectedSession = { id: sessionId };
+  handleJoinSession();
+}
+
+async function handleJoinSession() {
+  if (!sessionState.selectedSession || !sessionState.selectedSession.id) {
+    showError("No session selected.");
+    return;
   }
 
-  const confirmed = confirm("Join this attendance session?");
-  if (confirmed) {
-    alert("✓ You have successfully joined the session!");
-    // Update session data
-    viewSessionDetails(sessionId);
+  const user = getStoredUser();
+  if (!user) {
+    showError("User not found. Please log in again.");
+    return;
+  }
+
+  try {
+    await markAttendance(sessionState.selectedSession.id, user.id, "present");
+    showSuccess("You have successfully joined the session!");
+    await renderActiveSessions();
+    await viewSessionDetails(sessionState.selectedSession.id, null);
+  } catch (error) {
+    showError("Failed to join session: " + error.message);
   }
 }
 
-function renderAttendanceHistory() {
+async function handleMarkAttendance() {
+  if (!sessionState.selectedSession || !sessionState.currentStudent) {
+    showError("No session or student available.");
+    return;
+  }
+
+  try {
+    await markAttendance(sessionState.selectedSession.id, sessionState.currentStudent.id, "present");
+    showSuccess("Attendance marked successfully.");
+    await viewSessionDetails(sessionState.selectedSession.id, null);
+  } catch (error) {
+    showError("Failed to mark attendance: " + error.message);
+  }
+}
+
+async function renderAttendanceHistory() {
   const tbody = document.getElementById("attendanceHistoryBody");
   if (!tbody) return;
 
-  tbody.innerHTML = dummyAttendanceHistory
-    .map(
-      (record) => `
-    <tr>
-      <td>${record.subject}</td>
-      <td>${new Date(record.date).toLocaleDateString()}</td>
-      <td>${record.time}</td>
-      <td>
-        <span class="status-pill ${record.status}">
-          ${record.status === "present" ? "✓ Present" : "✗ Absent"}
-        </span>
-      </td>
-    </tr>
-  `
-    )
-    .join("");
+  try {
+    const sessions = await getAttendanceSessions();
+    if (!sessions || sessions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">No attendance records available.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = sessions
+      .map((session) => {
+        const start = session.start_time ? new Date(session.start_time) : null;
+        const status = session.status === "ended" ? "present" : "pending";
+        return `
+        <tr>
+          <td>${session.session_name || `Session ${session.id.substring(0, 8)}`}</td>
+          <td>${start ? start.toLocaleDateString() : "-"}</td>
+          <td>${start ? start.toLocaleTimeString() : "-"}</td>
+          <td>
+            <span class="status-pill ${status}">${status === "present" ? "✓ Present" : "⏳ Active"}</span>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+  } catch (error) {
+    console.error(error);
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:red;">Failed to load attendance history.</td></tr>';
+  }
 }
 
-// Dashboard integration - ensure sidebar/topbar work
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggle = document.getElementById("sidebarToggle");
 const userMenuToggle = document.querySelector(".user-menu-toggle");

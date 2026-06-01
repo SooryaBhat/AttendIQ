@@ -28,20 +28,24 @@ def _get_env(key: str) -> str:
 @lru_cache(maxsize=1)
 def get_supabase_client() -> Client:
     """
-    Create and return a reusable Supabase client.
+    Create and return a reusable Supabase client using the service role key.
 
     Uses @lru_cache so the client is instantiated only once
     for the lifetime of the application process.
 
+    The service role key is used for all server-side database operations
+    to ensure full administrative access. The publishable key is available
+    separately for frontend/public usage.
+
     Returns:
-        supabase.Client: Authenticated Supabase client instance.
+        supabase.Client: Authenticated Supabase client instance with service role.
 
     Raises:
-        EnvironmentError: If SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY
+        EnvironmentError: If SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY
                           are missing from the environment.
     """
     url: str = _get_env("SUPABASE_URL")
-    key: str = _get_env("SUPABASE_PUBLISHABLE_KEY")
+    key: str = _get_env("SUPABASE_SERVICE_ROLE_KEY")
 
     client: Client = create_client(url, key)
     return client
