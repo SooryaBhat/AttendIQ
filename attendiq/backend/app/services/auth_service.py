@@ -263,6 +263,10 @@ def login_user(payload: UserLogin) -> TokenResponse:
     """
     Authenticate a user and return a JWT access token.
     """
+    # Debug: trace login flow
+    print("LOGIN START")
+    print("EMAIL:", payload.email)
+
     # Fetch profile by email
     db_response = (
         supabase.table("profiles")
@@ -271,6 +275,8 @@ def login_user(payload: UserLogin) -> TokenResponse:
         .single()
         .execute()
     )
+
+    print("PROFILE QUERY RESPONSE:", db_response)
 
     if not db_response.data:
         raise ValueError("Invalid email or password.")
