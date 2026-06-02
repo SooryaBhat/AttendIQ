@@ -111,8 +111,6 @@ def update_faculty(faculty_id: str, payload: FacultyUpdate) -> FacultyResponse:
         .update(update_data)
         .eq("id", faculty_id)
         .eq("role", "faculty")
-        .select("*")
-        .single()
         .execute()
     )
 
@@ -123,7 +121,8 @@ def update_faculty(faculty_id: str, payload: FacultyUpdate) -> FacultyResponse:
     if not response.data:
         raise ValueError("Faculty member not found.")
 
-    return _build_faculty_response(response.data)
+    updated = response.data[0] if isinstance(response.data, list) else response.data
+    return _build_faculty_response(updated)
 
 
 def delete_faculty(faculty_id: str) -> None:

@@ -190,10 +190,17 @@ def register_user(payload: UserRegister) -> UserResponse:
     # ── Step 1: Create Supabase Auth user ────────────────────
     logger.info("Registering user: %s (role=%s)", payload.email, payload.role)
 
-    auth_response = supabase.auth.sign_up({
-        "email": payload.email,
-        "password": payload.password,
-    })
+    print("REGISTER EMAIL:", payload.email)
+    print("REGISTER PASSWORD:", payload.password)
+
+    try:
+        auth_response = supabase.auth.sign_up({
+            "email": payload.email,
+            "password": payload.password,
+        })
+    except Exception as e:
+        print("SUPABASE SIGNUP ERROR:", repr(e))
+        raise
 
     # Print full response structure for debugging
     _debug_signup_response(auth_response)

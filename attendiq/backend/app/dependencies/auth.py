@@ -9,13 +9,17 @@
 #  - Protecting routes with current_user dependency
 # ============================================================
 
-from fastapi import Depends, Header, HTTPException, status
-from typing import Optional
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.models.user import UserResponse
 from app.services.auth_service import get_current_user_service
 
-async def get_current_user(authorization: Optional[str] = Header(None, alias="Authorization")) -> UserResponse:
+# HTTP Bearer scheme for Swagger UI Authorize button
+bearer_scheme = HTTPBearer(bearerFormat="JWT", auto_error=False)
+
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> UserResponse:
     """
     FastAPI dependency to extract and validate JWT token from Authorization header.
 
@@ -36,24 +40,17 @@ async def get_current_user(authorization: Optional[str] = Header(None, alias="Au
         def protected_route(current_user: UserResponse = Depends(get_current_user)):
             return {"message": f"Hello, {current_user.full_name}"}
     """
-    # Check if Authorization header is present
-    if not authorization:
+    if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header missing.",
+            detail="Bearer token missing.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Check if header uses Bearer scheme
-    auth_parts = authorization.split()
-    if len(auth_parts) != 2 or auth_parts[0].lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization scheme. Use 'Bearer <token>'.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    token = credentials.credentials.strip()
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
 
-    token = auth_parts[1].strip()
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,7 +58,6 @@ async def get_current_user(authorization: Optional[str] = Header(None, alias="Au
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Validate token with Supabase and fetch user profile
     try:
         user = get_current_user_service(access_token=token)
         return user

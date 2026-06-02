@@ -39,7 +39,8 @@ def get_supabase_client() -> Client:
     """
     url: str = _get_env("SUPABASE_URL")
     key: str = _get_env("SUPABASE_SERVICE_ROLE_KEY")
+    
+    
     return create_client(url, key)
-
 
 supabase: Client = get_supabase_client()

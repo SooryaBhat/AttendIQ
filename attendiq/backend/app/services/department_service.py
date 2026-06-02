@@ -78,8 +78,6 @@ def update_department(department_id: str, payload: DepartmentUpdate) -> Departme
         supabase.table("departments")
         .update(update_data)
         .eq("id", department_id)
-        .select("*")
-        .single()
         .execute()
     )
 
@@ -90,7 +88,8 @@ def update_department(department_id: str, payload: DepartmentUpdate) -> Departme
     if not response.data:
         raise ValueError("Department not found.")
 
-    return _build_department_response(response.data)
+    updated = response.data[0] if isinstance(response.data, list) else response.data
+    return _build_department_response(updated)
 
 
 def delete_department(department_id: str) -> None:

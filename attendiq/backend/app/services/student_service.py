@@ -115,8 +115,6 @@ def update_student(student_id: str, payload: StudentUpdate) -> StudentResponse:
         .update(update_data)
         .eq("id", student_id)
         .eq("role", "student")
-        .select("*")
-        .single()
         .execute()
     )
 
@@ -127,7 +125,8 @@ def update_student(student_id: str, payload: StudentUpdate) -> StudentResponse:
     if not response.data:
         raise ValueError("Student not found.")
 
-    return _build_student_response(response.data)
+    updated = response.data[0] if isinstance(response.data, list) else response.data
+    return _build_student_response(updated)
 
 
 def delete_student(student_id: str) -> None:

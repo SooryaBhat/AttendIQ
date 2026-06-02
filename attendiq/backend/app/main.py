@@ -7,6 +7,7 @@ from app.routes.student import router as student_router
 from app.routes.faculty import router as faculty_router
 from app.routes.subject import router as subject_router
 from app.routes.attendance import router as attendance_router
+from app.routes.debug import router as debug_router
 
 app = FastAPI(
     title="AttendIQ API",
@@ -28,6 +29,7 @@ app.include_router(student_router)
 app.include_router(faculty_router)
 app.include_router(subject_router)
 app.include_router(attendance_router)
+app.include_router(debug_router)
 
 
 @app.get("/", tags=["root"])

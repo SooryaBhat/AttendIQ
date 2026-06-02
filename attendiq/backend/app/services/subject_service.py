@@ -81,8 +81,6 @@ def update_subject(subject_id: str, payload: SubjectUpdate) -> SubjectResponse:
         supabase.table("subjects")
         .update(update_data)
         .eq("id", subject_id)
-        .select("*")
-        .single()
         .execute()
     )
 
@@ -93,7 +91,8 @@ def update_subject(subject_id: str, payload: SubjectUpdate) -> SubjectResponse:
     if not response.data:
         raise ValueError("Subject not found.")
 
-    return _build_subject_response(response.data)
+    updated = response.data[0] if isinstance(response.data, list) else response.data
+    return _build_subject_response(updated)
 
 
 def delete_subject(subject_id: str) -> None:

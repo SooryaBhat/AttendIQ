@@ -59,8 +59,6 @@ def start_session(session_id: str) -> AttendanceSessionResponse:
         supabase.table("attendance_sessions")
         .update({"status": "started", "start_time": now})
         .eq("id", session_id)
-        .select("*")
-        .single()
         .execute()
     )
     if getattr(response, "error", None):
@@ -68,7 +66,8 @@ def start_session(session_id: str) -> AttendanceSessionResponse:
         raise RuntimeError("Unable to start session.")
     if not response.data:
         raise ValueError("Session not found.")
-    return _build_session_response(response.data)
+    updated = response.data[0] if isinstance(response.data, list) else response.data
+    return _build_session_response(updated)
 
 
 def end_session(session_id: str) -> AttendanceSessionResponse:
@@ -77,8 +76,6 @@ def end_session(session_id: str) -> AttendanceSessionResponse:
         supabase.table("attendance_sessions")
         .update({"status": "ended", "end_time": now})
         .eq("id", session_id)
-        .select("*")
-        .single()
         .execute()
     )
     if getattr(response, "error", None):
@@ -86,7 +83,8 @@ def end_session(session_id: str) -> AttendanceSessionResponse:
         raise RuntimeError("Unable to end session.")
     if not response.data:
         raise ValueError("Session not found.")
-    return _build_session_response(response.data)
+    updated = response.data[0] if isinstance(response.data, list) else response.data
+    return _build_session_response(updated)
 
 
 def list_sessions(subject_id: Optional[str] = None) -> List[AttendanceSessionResponse]:
@@ -144,14 +142,13 @@ def mark_attendance(session_id: str, student_id: str, attendance_status: str) ->
             .update({"attendance_status": attendance_status, "marked_at": now})
             .eq("session_id", session_id)
             .eq("student_id", student_id)
-            .select("*")
-            .single()
             .execute()
         )
         if getattr(resp, "error", None):
             logger.error("Failed to update attendance record: %s", resp.error)
             raise RuntimeError("Unable to update attendance record.")
-        return _build_record_response(resp.data)
+        updated = resp.data[0] if isinstance(resp.data, list) else resp.data
+        return _build_record_response(updated)
     else:
         record = {
             "id": str(uuid4()),
