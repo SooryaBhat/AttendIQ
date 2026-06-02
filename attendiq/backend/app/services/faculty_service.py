@@ -1,3 +1,9 @@
+# ============================================================
+#  AttendIQ — Faculty Service
+#  File: backend/app/services/faculty_service.py
+#  SDK FIX: See student_service.py header for full explanation.
+# ============================================================
+
 import logging
 from uuid import uuid4
 from typing import Optional
@@ -20,28 +26,27 @@ def _build_faculty_response(row: dict) -> FacultyResponse:
     )
 
 
-def list_faculty(department_id: Optional[str] = None, search: Optional[str] = None) -> list[FacultyResponse]:
+def list_faculty(
+    department_id: Optional[str] = None,
+    search: Optional[str] = None,
+) -> list[FacultyResponse]:
     query = supabase.table("profiles").select("*").eq("role", "faculty")
-
     if department_id:
         query = query.eq("department_id", department_id)
 
     response = query.execute()
-    if getattr(response, "error", None):
-        logger.error("Failed to list faculty: %s", response.error)
-        raise RuntimeError("Unable to fetch faculty list.")
-
     rows = response.data or []
+
     if search:
         value = search.strip().lower()
         rows = [
-            row for row in rows
-            if value in str(row.get("full_name", "")).lower()
-            or value in str(row.get("email", "")).lower()
-            or value in str(row.get("phone", "")).lower()
+            r for r in rows
+            if value in str(r.get("full_name", "")).lower()
+            or value in str(r.get("email", "")).lower()
+            or value in str(r.get("phone", "")).lower()
         ]
 
-    return [_build_faculty_response(row) for row in rows]
+    return [_build_faculty_response(r) for r in rows]
 
 
 def get_faculty(faculty_id: str) -> FacultyResponse:
@@ -53,14 +58,8 @@ def get_faculty(faculty_id: str) -> FacultyResponse:
         .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to fetch faculty %s: %s", faculty_id, response.error)
-        raise RuntimeError("Unable to fetch faculty.")
-
     if not response.data:
         raise ValueError("Faculty member not found.")
-
     return _build_faculty_response(response.data)
 
 
@@ -68,27 +67,23 @@ def create_faculty(payload: FacultyCreate) -> FacultyResponse:
     faculty_id = str(uuid4())
     password = payload.password or "welcome123"
     profile_data = {
-        "id": faculty_id,
-        "full_name": payload.full_name,
-        "email": payload.email,
-        "phone": payload.phone,
+        "id":            faculty_id,
+        "full_name":     payload.full_name,
+        "email":         payload.email,
+        "phone":         payload.phone,
         "department_id": str(payload.department_id),
-        "role": "faculty",
-        "is_active": payload.is_active,
+        "role":          "faculty",
+        "is_active":     True,
         "password_hash": hash_password(password),
         "face_enrolled": False,
         "voice_enrolled": False,
     }
 
-    response = (
-        supabase.table("profiles")
-        .insert(profile_data)
-        .select("*")
-        .execute()
-    )
+    # FIX: .insert(data).execute()  — no .select("*") chaining
+    response = supabase.table("profiles").insert(profile_data).execute()
 
-    if getattr(response, "error", None):
-        logger.error("Failed to create faculty: %s", response.error)
+    if not response.data:
+        logger.error("create_faculty: insert returned no data")
         raise RuntimeError("Unable to create faculty.")
 
     created = response.data[0] if isinstance(response.data, list) else response.data
@@ -99,13 +94,12 @@ def update_faculty(faculty_id: str, payload: FacultyUpdate) -> FacultyResponse:
     update_data = payload.dict(exclude_unset=True)
     if "password" in update_data:
         update_data["password_hash"] = hash_password(update_data.pop("password"))
-
     if not update_data:
         raise ValueError("No update fields were provided.")
-
     if update_data.get("department_id") is not None:
         update_data["department_id"] = str(update_data["department_id"])
 
+    # FIX: .update(data).eq(...).execute()  — no .select("*").single()
     response = (
         supabase.table("profiles")
         .update(update_data)
@@ -113,30 +107,23 @@ def update_faculty(faculty_id: str, payload: FacultyUpdate) -> FacultyResponse:
         .eq("role", "faculty")
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to update faculty %s: %s", faculty_id, response.error)
-        raise RuntimeError("Unable to update faculty.")
-
     if not response.data:
         raise ValueError("Faculty member not found.")
 
-    updated = response.data[0] if isinstance(response.data, list) else response.data
-    return _build_faculty_response(updated)
+    return get_faculty(faculty_id)
 
 
 def delete_faculty(faculty_id: str) -> None:
-    response = (
+    check = (
         supabase.table("profiles")
-        .delete()
+        .select("id")
         .eq("id", faculty_id)
         .eq("role", "faculty")
+        .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to delete faculty %s: %s", faculty_id, response.error)
-        raise RuntimeError("Unable to delete faculty.")
-
-    if not response.data:
+    if not check.data:
         raise ValueError("Faculty member not found.")
+
+    # FIX: .delete().eq(...).execute()  — no .select() chaining
+    supabase.table("profiles").delete().eq("id", faculty_id).execute()

@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 from app.dependencies.auth import get_current_user
@@ -10,6 +12,7 @@ from app.models.attendance import (
     AttendanceSessionResponse,
     AttendanceSessionUpdate,
     AttendanceRecordResponse,
+    AttendanceGroupFaceCheckinResponse,
 )
 from app.services.attendance_service import (
     create_session,
@@ -19,9 +22,34 @@ from app.services.attendance_service import (
     get_session,
     mark_attendance,
     get_session_attendance,
+    face_checkin,
+    group_face_checkin,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/attendance", tags=["attendance"])
+
+
+# Allowed image MIME types for face check-in
+_ALLOWED_CONTENT_TYPES = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/bmp",
+    "image/webp",
+}
+
+
+def _validate_image_upload(file: UploadFile) -> None:
+    if file.content_type not in _ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=(
+                f"Unsupported file type '{file.content_type}'. "
+                f"Accepted types: JPEG, PNG, BMP, WEBP."
+            ),
+        )
 
 
 @router.post("/sessions", response_model=AttendanceSessionResponse, status_code=status.HTTP_201_CREATED)
@@ -77,6 +105,14 @@ class MarkPayload(BaseModel := __import__('pydantic').BaseModel):
     attendance_status: str
 
 
+class AttendanceFaceCheckinResponse(BaseModel):
+    attendance_marked: bool
+    student_id: Optional[UUID] = None
+    confidence: Optional[float] = None
+    session_id: Optional[UUID] = None
+    reason: Optional[str] = None
+
+
 @router.post("/mark", response_model=AttendanceRecordResponse)
 def mark_attendance_route(payload: MarkPayload, current_user: UserResponse = Depends(get_current_user)) -> AttendanceRecordResponse:
     try:
@@ -85,6 +121,90 @@ def mark_attendance_route(payload: MarkPayload, current_user: UserResponse = Dep
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+
+@router.post(
+    "/face-checkin",
+    response_model=AttendanceFaceCheckinResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Face-based attendance check-in",
+)
+async def face_checkin_route(
+    session_id: UUID = Form(..., description="UUID of the attendance session"),
+    image: UploadFile = File(
+        ..., description="Student face image (JPEG / PNG / BMP / WEBP, max 10 MB)"
+    ),
+    current_user: UserResponse = Depends(get_current_user),
+) -> AttendanceFaceCheckinResponse:
+    _validate_image_upload(image)
+    image_bytes = await image.read()
+
+    if len(image_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large. Maximum allowed size is 10 MB.",
+        )
+
+    if len(image_bytes) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+
+    try:
+        result = face_checkin(str(session_id), image_bytes)
+        return AttendanceFaceCheckinResponse(**result)
+
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error during face check-in: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during face check-in.",
+        ) from exc
+
+
+@router.post(
+    "/group-face-checkin",
+    response_model=AttendanceGroupFaceCheckinResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Group face-based attendance check-in",
+)
+async def group_face_checkin_route(
+    session_id: UUID = Form(..., description="UUID of the attendance session"),
+    image: UploadFile = File(
+        ..., description="Classroom photo containing multiple students' faces"
+    ),
+    current_user: UserResponse = Depends(get_current_user),
+) -> AttendanceGroupFaceCheckinResponse:
+    _validate_image_upload(image)
+    image_bytes = await image.read()
+
+    if len(image_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large. Maximum allowed size is 10 MB.",
+        )
+
+    if len(image_bytes) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+
+    try:
+        result = group_face_checkin(str(session_id), image_bytes)
+        return AttendanceGroupFaceCheckinResponse(**result)
+
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error during group face check-in: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during group face check-in.",
+        ) from exc
 
 
 @router.get("/sessions/{session_id}/records", response_model=List[AttendanceRecordResponse])

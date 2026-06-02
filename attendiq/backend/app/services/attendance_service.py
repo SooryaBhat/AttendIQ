@@ -1,3 +1,9 @@
+# ============================================================
+#  AttendIQ — Attendance Service
+#  File: backend/app/services/attendance_service.py
+#  SDK FIX: See student_service.py header for full explanation.
+# ============================================================
+
 import logging
 from uuid import uuid4
 from datetime import datetime
@@ -7,9 +13,10 @@ from app.db.supabase_client import supabase
 from app.models.attendance import (
     AttendanceSessionCreate,
     AttendanceSessionResponse,
-    AttendanceSessionUpdate,
     AttendanceRecordResponse,
 )
+from app.services.face_service import recognize_faces
+from app.services.face_service import recognize_face
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +26,9 @@ def _build_session_response(row: dict) -> AttendanceSessionResponse:
         id=row["id"],
         subject_id=row["subject_id"],
         faculty_id=row.get("faculty_id"),
-        session_name=row.get("session_name"),
-        start_time=row.get("start_time"),
-        end_time=row.get("end_time"),
+        session_label=row.get("session_label"),
+        started_at=row.get("started_at"),
+        completed_at=row.get("completed_at"),
         status=row.get("status", "created"),
         created_at=row.get("created_at"),
     )
@@ -32,21 +39,55 @@ def _build_record_response(row: dict) -> AttendanceRecordResponse:
         id=row["id"],
         session_id=row["session_id"],
         student_id=row["student_id"],
-        attendance_status=row.get("attendance_status"),
+        status=row.get("status"),
         marked_at=row.get("marked_at"),
     )
+
+
+def _get_session_row(session_id: str) -> dict:
+    """Helper: fetch a session row directly — used after update to return data."""
+    session_id = str(session_id)
+    resp = (
+        supabase.table("attendance_sessions")
+        .select("*")
+        .eq("id", session_id)
+        .single()
+        .execute()
+    )
+    if not resp.data:
+        raise ValueError("Session not found.")
+    return resp.data
 
 
 def create_session(payload: AttendanceSessionCreate) -> AttendanceSessionResponse:
     data = payload.dict()
     data["id"] = str(uuid4())
-    data["status"] = "created"
 
-    response = (
-        supabase.table("attendance_sessions").insert(data).select("*").execute()
-    )
-    if getattr(response, "error", None):
-        logger.error("Failed to create session: %s", response.error)
+    # ensure UUIDs are serialized to strings for Supabase
+    data["subject_id"] = str(data["subject_id"])
+    data["faculty_id"] = str(data["faculty_id"])
+    data["department_id"] = str(data["department_id"])
+
+    # set DB defaults for counts/status
+    data.setdefault("method", "face")
+    data.setdefault("status", "pending")
+    data.setdefault("total_students", 0)
+    data.setdefault("present_count", 0)
+    data.setdefault("absent_count", 0)
+
+    # ensure dates/datetimes are sent as ISO strings (Supabase client requires JSON-serializable values)
+    if data.get("session_date") is not None:
+        data["session_date"] = data["session_date"].isoformat()
+    if data.get("started_at") is not None:
+        data["started_at"] = data["started_at"].isoformat()
+    if data.get("completed_at") is not None:
+        data["completed_at"] = data["completed_at"].isoformat()
+
+    # FIX: .insert(data).execute()  — no .select("*")
+    response = supabase.table("attendance_sessions").insert(data).execute()
+
+    if not response.data:
+        logger.error("create_session: insert returned no data")
         raise RuntimeError("Unable to create session.")
 
     created = response.data[0] if isinstance(response.data, list) else response.data
@@ -55,123 +96,230 @@ def create_session(payload: AttendanceSessionCreate) -> AttendanceSessionRespons
 
 def start_session(session_id: str) -> AttendanceSessionResponse:
     now = datetime.utcnow().isoformat()
+    session_id = str(session_id)
+
+    # FIX: .update(data).eq(...).execute()  — no .select("*").single()
     response = (
         supabase.table("attendance_sessions")
-        .update({"status": "started", "start_time": now})
+        .update({"status": "processing", "started_at": now})
         .eq("id", session_id)
         .execute()
     )
-    if getattr(response, "error", None):
-        logger.error("Failed to start session %s: %s", session_id, response.error)
-        raise RuntimeError("Unable to start session.")
     if not response.data:
         raise ValueError("Session not found.")
-    updated = response.data[0] if isinstance(response.data, list) else response.data
-    return _build_session_response(updated)
+
+    return _build_session_response(_get_session_row(session_id))
 
 
 def end_session(session_id: str) -> AttendanceSessionResponse:
     now = datetime.utcnow().isoformat()
+    session_id = str(session_id)
+
+    # FIX: .update(data).eq(...).execute()  — no .select("*").single()
     response = (
         supabase.table("attendance_sessions")
-        .update({"status": "ended", "end_time": now})
+        .update({"status": "completed", "completed_at": now})
         .eq("id", session_id)
         .execute()
     )
-    if getattr(response, "error", None):
-        logger.error("Failed to end session %s: %s", session_id, response.error)
-        raise RuntimeError("Unable to end session.")
     if not response.data:
         raise ValueError("Session not found.")
-    updated = response.data[0] if isinstance(response.data, list) else response.data
-    return _build_session_response(updated)
+
+    return _build_session_response(_get_session_row(session_id))
 
 
 def list_sessions(subject_id: Optional[str] = None) -> List[AttendanceSessionResponse]:
     query = supabase.table("attendance_sessions").select("*")
     if subject_id:
+        subject_id = str(subject_id)
         query = query.eq("subject_id", subject_id)
 
     response = query.execute()
-    if getattr(response, "error", None):
-        logger.error("Failed to list sessions: %s", response.error)
-        raise RuntimeError("Unable to fetch sessions.")
-
     rows = response.data or []
     return [_build_session_response(r) for r in rows]
 
 
 def get_session(session_id: str) -> AttendanceSessionResponse:
+    session_id = str(session_id)
     response = (
-        supabase.table("attendance_sessions").select("*").eq("id", session_id).single().execute()
+        supabase.table("attendance_sessions")
+        .select("*")
+        .eq("id", session_id)
+        .single()
+        .execute()
     )
-    if getattr(response, "error", None):
-        logger.error("Failed to fetch session %s: %s", session_id, response.error)
-        raise RuntimeError("Unable to fetch session.")
     if not response.data:
         raise ValueError("Session not found.")
     return _build_session_response(response.data)
 
 
-def mark_attendance(session_id: str, student_id: str, attendance_status: str) -> AttendanceRecordResponse:
-    # validate session exists
-    s = supabase.table("attendance_sessions").select("*").eq("id", session_id).single().execute()
-    if getattr(s, "error", None):
-        logger.error("Failed to validate session %s: %s", session_id, s.error)
-        raise RuntimeError("Unable to validate session.")
+def _get_subject_enrolled_student_ids(subject_id: str) -> list[str]:
+    response = (
+        supabase.table("subject_enrollments")
+        .select("student_id")
+        .eq("subject_id", str(subject_id))
+        .execute()
+    )
+    return [row["student_id"] for row in (response.data or [])]
+
+
+def group_face_checkin(session_id: str, image_bytes: bytes) -> dict:
+    session_id = str(session_id)
+    session = _get_session_row(session_id)
+    subject_id = session.get("subject_id")
+    if not subject_id:
+        raise ValueError("Attendance session does not have an associated subject.")
+
+    enrolled_student_ids = _get_subject_enrolled_student_ids(subject_id)
+    if not enrolled_student_ids:
+        return {
+            "present_count": 0,
+            "absent_count": 0,
+            "present_students": [],
+            "absent_students": [],
+        }
+
+    recognized = recognize_faces(image_bytes=image_bytes, student_ids=enrolled_student_ids)
+    recognized_student_ids = [r["student_id"] for r in recognized]
+    present_set = set(recognized_student_ids)
+
+    for match in recognized:
+        mark_attendance(
+            session_id=session_id,
+            student_id=str(match["student_id"]),
+            attendance_status="present",
+            method="face",
+            confidence=match.get("confidence", 0.0),
+        )
+
+    absent_students = [sid for sid in enrolled_student_ids if sid not in present_set]
+
+    return {
+        "present_count": len(present_set),
+        "absent_count": len(absent_students),
+        "present_students": recognized_student_ids,
+        "absent_students": absent_students,
+    }
+
+
+def face_checkin(session_id: str, image_bytes: bytes) -> dict:
+    session_id = str(session_id)
+    try:
+        recognition = recognize_face(image_bytes)
+    except ValueError:
+        return {"attendance_marked": False, "reason": "face_not_recognized"}
+
+    if not recognition.get("matched"):
+        return {"attendance_marked": False, "reason": "face_not_recognized"}
+
+    student_id = str(recognition["student_id"])
+    confidence = float(recognition.get("confidence", 0.0))
+
+    mark_attendance(
+        session_id=session_id,
+        student_id=student_id,
+        attendance_status="present",
+        method="face",
+        confidence=confidence,
+    )
+
+    return {
+        "attendance_marked": True,
+        "student_id": student_id,
+        "confidence": confidence,
+        "session_id": session_id,
+    }
+
+
+def mark_attendance(
+    session_id: str,
+    student_id: str,
+    attendance_status: str,
+    method: str = "face",
+    confidence: float = 1.0,
+) -> AttendanceRecordResponse:
+    # normalize IDs to strings for Supabase
+    session_id = str(session_id)
+    student_id = str(student_id)
+
+    # validate session and capture related subject/department IDs
+    s = (
+        supabase.table("attendance_sessions")
+        .select("id,subject_id,department_id")
+        .eq("id", session_id)
+        .single()
+        .execute()
+    )
     if not s.data:
         raise ValueError("Session not found.")
+
+    subject_id = s.data.get("subject_id")
+    department_id = s.data.get("department_id")
+
+    now = datetime.utcnow().isoformat()
 
     # check existing record
     exist = (
         supabase.table("attendance_records")
-        .select("*")
+        .select("id")
         .eq("session_id", session_id)
         .eq("student_id", student_id)
         .execute()
     )
-    if getattr(exist, "error", None):
-        logger.error("Failed to check attendance record: %s", exist.error)
-        raise RuntimeError("Unable to check attendance record.")
 
-    now = datetime.utcnow().isoformat()
+    confidence = float(confidence)
+
     if exist.data:
-        # update
-        resp = (
+        # UPDATE existing — FIX: no .select("*").single() after .eq()
+        supabase.table("attendance_records").update(
+            {
+                "status": attendance_status,
+                "marked_at": now,
+                "method": method,
+                "confidence": confidence,
+            }
+        ).eq("session_id", session_id).eq("student_id", student_id).execute()
+
+        # Re-fetch updated record
+        updated = (
             supabase.table("attendance_records")
-            .update({"attendance_status": attendance_status, "marked_at": now})
+            .select("*")
             .eq("session_id", session_id)
             .eq("student_id", student_id)
+            .single()
             .execute()
         )
-        if getattr(resp, "error", None):
-            logger.error("Failed to update attendance record: %s", resp.error)
-            raise RuntimeError("Unable to update attendance record.")
-        updated = resp.data[0] if isinstance(resp.data, list) else resp.data
-        return _build_record_response(updated)
+        return _build_record_response(updated.data)
     else:
         record = {
-            "id": str(uuid4()),
-            "session_id": session_id,
-            "student_id": student_id,
-            "attendance_status": attendance_status,
-            "marked_at": now,
+            "id":             str(uuid4()),
+            "session_id":    session_id,
+            "student_id":    student_id,
+            "subject_id":    subject_id,
+            "department_id": department_id,
+            "status":        attendance_status,
+            "method":        method,
+            "confidence":    confidence,
+            "marked_at":     now,
         }
-        resp = supabase.table("attendance_records").insert(record).select("*").execute()
-        if getattr(resp, "error", None):
-            logger.error("Failed to insert attendance record: %s", resp.error)
+        # FIX: .insert(data).execute()  — no .select("*")
+        resp = supabase.table("attendance_records").insert(record).execute()
+
+        if not resp.data:
+            logger.error("mark_attendance: insert returned no data")
             raise RuntimeError("Unable to mark attendance.")
+
         created = resp.data[0] if isinstance(resp.data, list) else resp.data
         return _build_record_response(created)
 
 
 def get_session_attendance(session_id: str) -> List[AttendanceRecordResponse]:
+    session_id = str(session_id)
     resp = (
-        supabase.table("attendance_records").select("*").eq("session_id", session_id).execute()
+        supabase.table("attendance_records")
+        .select("*")
+        .eq("session_id", session_id)
+        .execute()
     )
-    if getattr(resp, "error", None):
-        logger.error("Failed to fetch attendance records for session %s: %s", session_id, resp.error)
-        raise RuntimeError("Unable to fetch attendance records.")
-
     rows = resp.data or []
     return [_build_record_response(r) for r in rows]

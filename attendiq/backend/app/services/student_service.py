@@ -1,3 +1,30 @@
+# ============================================================
+#  AttendIQ — Student Service
+#  File: backend/app/services/student_service.py
+#
+#  SDK FIX SUMMARY (supabase-py v2.x / postgrest-py v2.x):
+#  ─────────────────────────────────────────────────────────
+#  .insert()  → returns SyncQueryRequestBuilder  → has .select()
+#  .update()  → returns SyncFilterRequestBuilder → has .select()
+#  .delete()  → returns SyncFilterRequestBuilder → has .select()
+#
+#  BROKEN pattern:  .insert(data).select("*").execute()
+#    insert() already defaults to returning=representation,
+#    so chaining .select("*") on SyncQueryRequestBuilder is
+#    redundant AND breaks — SyncQueryRequestBuilder.select()
+#    re-opens a SELECT query, it does NOT mean "return columns".
+#
+#  FIXED pattern:   .insert(data).execute()
+#    Response data is already the full row via representation.
+#
+#  For update/delete after filters:
+#  BROKEN:  .update(data).eq(...).select("*").single().execute()
+#  FIXED:   .update(data).eq(...).execute()  then re-fetch if needed.
+#    SyncFilterRequestBuilder DOES have .select() but chaining it
+#    after .eq() causes the builder to switch to a SELECT operation
+#    and drop the update, which is wrong.
+# ============================================================
+
 import logging
 from uuid import uuid4
 from typing import Optional
@@ -23,28 +50,28 @@ def _build_student_response(row: dict) -> StudentResponse:
     )
 
 
-def list_students(department_id: Optional[str] = None, search: Optional[str] = None) -> list[StudentResponse]:
+def list_students(
+    department_id: Optional[str] = None,
+    search: Optional[str] = None,
+) -> list[StudentResponse]:
+    # .select("*").eq() → SyncFilterRequestBuilder — no change needed here
     query = supabase.table("profiles").select("*").eq("role", "student")
-
     if department_id:
         query = query.eq("department_id", department_id)
 
     response = query.execute()
-    if getattr(response, "error", None):
-        logger.error("Failed to list students: %s", response.error)
-        raise RuntimeError("Unable to fetch students.")
-
     rows = response.data or []
+
     if search:
         value = search.strip().lower()
         rows = [
-            row for row in rows
-            if value in str(row.get("full_name", "")).lower()
-            or value in str(row.get("email", "")).lower()
-            or value in str(row.get("roll_number", "")).lower()
+            r for r in rows
+            if value in str(r.get("full_name", "")).lower()
+            or value in str(r.get("email", "")).lower()
+            or value in str(r.get("roll_number", "")).lower()
         ]
 
-    return [_build_student_response(row) for row in rows]
+    return [_build_student_response(r) for r in rows]
 
 
 def get_student(student_id: str) -> StudentResponse:
@@ -56,14 +83,8 @@ def get_student(student_id: str) -> StudentResponse:
         .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to fetch student %s: %s", student_id, response.error)
-        raise RuntimeError("Unable to fetch student.")
-
     if not response.data:
         raise ValueError("Student not found.")
-
     return _build_student_response(response.data)
 
 
@@ -71,28 +92,25 @@ def create_student(payload: StudentCreate) -> StudentResponse:
     student_id = str(uuid4())
     password = payload.password or "welcome123"
     profile_data = {
-        "id": student_id,
-        "full_name": payload.full_name,
-        "roll_number": payload.roll_number,
-        "email": payload.email,
-        "phone": payload.phone,
+        "id":            student_id,
+        "full_name":     payload.full_name,
+        "roll_number":   payload.roll_number,
+        "email":         payload.email,
+        "phone":         payload.phone,
         "department_id": str(payload.department_id) if payload.department_id else None,
         "face_enrolled": payload.face_enrolled,
         "voice_enrolled": payload.voice_enrolled,
-        "role": "student",
-        "is_active": True,
+        "role":          "student",
+        "is_active":     True,
         "password_hash": hash_password(password),
     }
 
-    response = (
-        supabase.table("profiles")
-        .insert(profile_data)
-        .select("*")
-        .execute()
-    )
+    # FIX: .insert(data).execute()  — do NOT chain .select("*")
+    # insert() already returns the full row (returning=representation by default)
+    response = supabase.table("profiles").insert(profile_data).execute()
 
-    if getattr(response, "error", None):
-        logger.error("Failed to create student: %s", response.error)
+    if not response.data:
+        logger.error("create_student: insert returned no data")
         raise RuntimeError("Unable to create student.")
 
     created = response.data[0] if isinstance(response.data, list) else response.data
@@ -103,13 +121,13 @@ def update_student(student_id: str, payload: StudentUpdate) -> StudentResponse:
     update_data = payload.dict(exclude_unset=True)
     if "password" in update_data:
         update_data["password_hash"] = hash_password(update_data.pop("password"))
-
     if not update_data:
         raise ValueError("No update fields were provided.")
-
     if update_data.get("department_id") is not None:
         update_data["department_id"] = str(update_data["department_id"])
 
+    # FIX: .update(data).eq(...).execute()  — do NOT chain .select("*").single()
+    # After update, re-fetch with a plain select to get the updated row.
     response = (
         supabase.table("profiles")
         .update(update_data)
@@ -118,29 +136,25 @@ def update_student(student_id: str, payload: StudentUpdate) -> StudentResponse:
         .execute()
     )
 
-    if getattr(response, "error", None):
-        logger.error("Failed to update student %s: %s", student_id, response.error)
-        raise RuntimeError("Unable to update student.")
-
     if not response.data:
         raise ValueError("Student not found.")
 
-    updated = response.data[0] if isinstance(response.data, list) else response.data
-    return _build_student_response(updated)
+    # Re-fetch the updated row cleanly
+    return get_student(student_id)
 
 
 def delete_student(student_id: str) -> None:
-    response = (
+    # First verify it exists
+    check = (
         supabase.table("profiles")
-        .delete()
+        .select("id")
         .eq("id", student_id)
         .eq("role", "student")
+        .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to delete student %s: %s", student_id, response.error)
-        raise RuntimeError("Unable to delete student.")
-
-    if not response.data:
+    if not check.data:
         raise ValueError("Student not found.")
+
+    # FIX: .delete().eq(...).execute()  — no .select() chaining
+    supabase.table("profiles").delete().eq("id", student_id).execute()

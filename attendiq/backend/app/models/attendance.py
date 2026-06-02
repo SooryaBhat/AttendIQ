@@ -1,22 +1,31 @@
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
 
 class AttendanceSessionCreate(BaseModel):
     subject_id: UUID = Field(..., description="Subject identifier")
-    faculty_id: Optional[UUID] = Field(None, description="Faculty who created the session")
-    session_name: str = Field(..., description="Human readable session name")
-    start_time: Optional[datetime] = Field(None, description="Planned start time")
-    end_time: Optional[datetime] = Field(None, description="Planned end time")
+    faculty_id: UUID = Field(..., description="Faculty who created the session")
+    department_id: UUID = Field(..., description="Department identifier")
+    session_date: date = Field(..., description="Attendance session date")
+    session_label: str = Field(..., description="Human readable session label")
+    method: str = Field("face", description="Attendance method")
+    status: Optional[str] = Field("pending", description="Session status")
+    uploaded_file_path: Optional[str] = Field(None, description="Path to uploaded attendance file")
+    total_students: Optional[int] = Field(0, description="Total number of students")
+    present_count: Optional[int] = Field(0, description="Present student count")
+    absent_count: Optional[int] = Field(0, description="Absent student count")
+    processing_log: Optional[str] = Field(None, description="Processing log or notes")
+    started_at: Optional[datetime] = Field(None, description="Actual start time")
+    completed_at: Optional[datetime] = Field(None, description="Actual completion time")
 
 
 class AttendanceSessionUpdate(BaseModel):
-    session_name: Optional[str] = Field(None, description="Updated session name")
-    start_time: Optional[datetime] = Field(None, description="Updated start time")
-    end_time: Optional[datetime] = Field(None, description="Updated end time")
+    session_label: Optional[str] = Field(None, description="Updated session label")
+    started_at: Optional[datetime] = Field(None, description="Updated start time")
+    completed_at: Optional[datetime] = Field(None, description="Updated completion time")
     status: Optional[str] = Field(None, description="Session status")
 
 
@@ -24,9 +33,9 @@ class AttendanceSessionResponse(BaseModel):
     id: UUID
     subject_id: UUID
     faculty_id: Optional[UUID] = None
-    session_name: str
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    session_label: str
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     status: str
     created_at: Optional[datetime] = None
 
@@ -38,8 +47,29 @@ class AttendanceRecordResponse(BaseModel):
     id: UUID
     session_id: UUID
     student_id: UUID
-    attendance_status: str
+    status: str
     marked_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AttendanceGroupFaceCheckinResponse(BaseModel):
+    present_count: int
+    absent_count: int
+    present_students: List[UUID]
+    absent_students: List[UUID]
+
+    class Config:
+        from_attributes = True
+
+
+class AttendanceFaceCheckinResponse(BaseModel):
+    attendance_marked: bool
+    student_id: Optional[UUID] = None
+    confidence: Optional[float] = None
+    session_id: Optional[UUID] = None
+    reason: Optional[str] = None
 
     class Config:
         from_attributes = True

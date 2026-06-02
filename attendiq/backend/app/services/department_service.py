@@ -1,12 +1,14 @@
+# ============================================================
+#  AttendIQ — Department Service
+#  File: backend/app/services/department_service.py
+#  SDK FIX: See student_service.py header for full explanation.
+# ============================================================
+
 import logging
 from uuid import uuid4
 
 from app.db.supabase_client import supabase
-from app.models.department import (
-    DepartmentCreate,
-    DepartmentResponse,
-    DepartmentUpdate,
-)
+from app.models.department import DepartmentCreate, DepartmentResponse, DepartmentUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +25,8 @@ def _build_department_response(row: dict) -> DepartmentResponse:
 
 def list_departments() -> list[DepartmentResponse]:
     response = supabase.table("departments").select("*").execute()
-    if getattr(response, "error", None):
-        logger.error("Failed to list departments: %s", response.error)
-        raise RuntimeError("Unable to fetch departments.")
-
     rows = response.data or []
-    return [_build_department_response(row) for row in rows]
+    return [_build_department_response(r) for r in rows]
 
 
 def get_department(department_id: str) -> DepartmentResponse:
@@ -39,14 +37,8 @@ def get_department(department_id: str) -> DepartmentResponse:
         .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to fetch department %s: %s", department_id, response.error)
-        raise RuntimeError("Unable to fetch department.")
-
     if not response.data:
         raise ValueError("Department not found.")
-
     return _build_department_response(response.data)
 
 
@@ -54,15 +46,11 @@ def create_department(payload: DepartmentCreate) -> DepartmentResponse:
     department_data = payload.dict()
     department_data["id"] = str(uuid4())
 
-    response = (
-        supabase.table("departments")
-        .insert(department_data)
-        .select("*")
-        .execute()
-    )
+    # FIX: .insert(data).execute()  — no .select("*")
+    response = supabase.table("departments").insert(department_data).execute()
 
-    if getattr(response, "error", None):
-        logger.error("Failed to create department: %s", response.error)
+    if not response.data:
+        logger.error("create_department: insert returned no data")
         raise RuntimeError("Unable to create department.")
 
     created = response.data[0] if isinstance(response.data, list) else response.data
@@ -74,35 +62,29 @@ def update_department(department_id: str, payload: DepartmentUpdate) -> Departme
     if not update_data:
         raise ValueError("No updates provided.")
 
+    # FIX: .update(data).eq(...).execute()  — no .select("*").single()
     response = (
         supabase.table("departments")
         .update(update_data)
         .eq("id", department_id)
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to update department %s: %s", department_id, response.error)
-        raise RuntimeError("Unable to update department.")
-
     if not response.data:
         raise ValueError("Department not found.")
 
-    updated = response.data[0] if isinstance(response.data, list) else response.data
-    return _build_department_response(updated)
+    return get_department(department_id)
 
 
 def delete_department(department_id: str) -> None:
-    response = (
+    check = (
         supabase.table("departments")
-        .delete()
+        .select("id")
         .eq("id", department_id)
+        .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to delete department %s: %s", department_id, response.error)
-        raise RuntimeError("Unable to delete department.")
-
-    if not response.data:
+    if not check.data:
         raise ValueError("Department not found.")
+
+    # FIX: .delete().eq(...).execute()  — no .select()
+    supabase.table("departments").delete().eq("id", department_id).execute()

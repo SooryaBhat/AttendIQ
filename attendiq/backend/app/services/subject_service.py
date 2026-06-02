@@ -1,13 +1,15 @@
+# ============================================================
+#  AttendIQ — Subject Service
+#  File: backend/app/services/subject_service.py
+#  SDK FIX: See student_service.py header for full explanation.
+# ============================================================
+
 import logging
 from uuid import uuid4
 from typing import Optional
 
 from app.db.supabase_client import supabase
-from app.models.subject import (
-    SubjectCreate,
-    SubjectResponse,
-    SubjectUpdate,
-)
+from app.models.subject import SubjectCreate, SubjectResponse, SubjectUpdate
 from app.models.user import UserResponse
 
 logger = logging.getLogger(__name__)
@@ -20,18 +22,16 @@ def _build_subject_response(row: dict) -> SubjectResponse:
         code=row["code"],
         faculty_id=row.get("faculty_id"),
         department_id=row.get("department_id"),
+        semester=row["semester"],
+        credits=row["credits"],
         created_at=row.get("created_at"),
     )
 
 
 def list_subjects() -> list[SubjectResponse]:
     response = supabase.table("subjects").select("*").execute()
-    if getattr(response, "error", None):
-        logger.error("Failed to list subjects: %s", response.error)
-        raise RuntimeError("Unable to fetch subjects.")
-
     rows = response.data or []
-    return [_build_subject_response(row) for row in rows]
+    return [_build_subject_response(r) for r in rows]
 
 
 def get_subject(subject_id: str) -> SubjectResponse:
@@ -42,30 +42,26 @@ def get_subject(subject_id: str) -> SubjectResponse:
         .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to fetch subject %s: %s", subject_id, response.error)
-        raise RuntimeError("Unable to fetch subject.")
-
     if not response.data:
         raise ValueError("Subject not found.")
-
     return _build_subject_response(response.data)
 
 
 def create_subject(payload: SubjectCreate) -> SubjectResponse:
     subject_data = payload.dict()
     subject_data["id"] = str(uuid4())
+    subject_data["semester"] = payload.semester
+    subject_data["credits"] = payload.credits
+    if subject_data.get("faculty_id") is not None:
+        subject_data["faculty_id"] = str(subject_data["faculty_id"])
+    if subject_data.get("department_id") is not None:
+        subject_data["department_id"] = str(subject_data["department_id"])
 
-    response = (
-        supabase.table("subjects")
-        .insert(subject_data)
-        .select("*")
-        .execute()
-    )
+    # FIX: .insert(data).execute()  — no .select("*") chaining
+    response = supabase.table("subjects").insert(subject_data).execute()
 
-    if getattr(response, "error", None):
-        logger.error("Failed to create subject: %s", response.error)
+    if not response.data:
+        logger.error("create_subject: insert returned no data")
         raise RuntimeError("Unable to create subject.")
 
     created = response.data[0] if isinstance(response.data, list) else response.data
@@ -74,130 +70,111 @@ def create_subject(payload: SubjectCreate) -> SubjectResponse:
 
 def update_subject(subject_id: str, payload: SubjectUpdate) -> SubjectResponse:
     update_data = payload.dict(exclude_unset=True)
+    if update_data.get("faculty_id") is not None:
+        update_data["faculty_id"] = str(update_data["faculty_id"])
+    if update_data.get("department_id") is not None:
+        update_data["department_id"] = str(update_data["department_id"])
     if not update_data:
         raise ValueError("No updates provided.")
 
+    # FIX: .update(data).eq(...).execute()  — no .select("*").single()
     response = (
         supabase.table("subjects")
         .update(update_data)
         .eq("id", subject_id)
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to update subject %s: %s", subject_id, response.error)
-        raise RuntimeError("Unable to update subject.")
-
     if not response.data:
         raise ValueError("Subject not found.")
 
-    updated = response.data[0] if isinstance(response.data, list) else response.data
-    return _build_subject_response(updated)
+    return get_subject(subject_id)
 
 
 def delete_subject(subject_id: str) -> None:
-    response = (
+    check = (
         supabase.table("subjects")
-        .delete()
+        .select("id")
         .eq("id", subject_id)
+        .single()
         .execute()
     )
-
-    if getattr(response, "error", None):
-        logger.error("Failed to delete subject %s: %s", subject_id, response.error)
-        raise RuntimeError("Unable to delete subject.")
-
-    if not response.data:
+    if not check.data:
         raise ValueError("Subject not found.")
 
+    # FIX: .delete().eq(...).execute()  — no .select() chaining
+    supabase.table("subjects").delete().eq("id", subject_id).execute()
+
+
+# ── Enrollment helpers ────────────────────────────────────────
 
 def enroll_student(subject_id: str, student_id: str) -> dict:
-    # validate subject exists
-    resp = (
-        supabase.table("subjects").select("*").eq("id", subject_id).single().execute()
-    )
-    if getattr(resp, "error", None):
-        logger.error("Failed to validate subject %s: %s", subject_id, resp.error)
-        raise RuntimeError("Unable to validate subject.")
+    subject_id = str(subject_id)
+    student_id = str(student_id)
+    # validate subject
+    resp = supabase.table("subjects").select("id").eq("id", subject_id).single().execute()
     if not resp.data:
         raise ValueError("Subject not found.")
 
-    # validate student exists
-    sresp = (
-        supabase.table("profiles").select("*").eq("id", student_id).single().execute()
-    )
-    if getattr(sresp, "error", None):
-        logger.error("Failed to validate student %s: %s", student_id, sresp.error)
-        raise RuntimeError("Unable to validate student.")
+    # validate student
+    sresp = supabase.table("profiles").select("id").eq("id", student_id).single().execute()
     if not sresp.data:
         raise ValueError("Student not found.")
 
-    # prevent duplicate enrollment
+    # check duplicate
     exist = (
         supabase.table("subject_enrollments")
-        .select("*")
+        .select("id")
         .eq("subject_id", subject_id)
         .eq("student_id", student_id)
         .execute()
     )
-    if getattr(exist, "error", None):
-        logger.error("Failed to check existing enrollment: %s", exist.error)
-        raise RuntimeError("Unable to check enrollment.")
     if exist.data:
         raise ValueError("Student already enrolled in this subject.")
 
     enrollment = {
-        "id": str(uuid4()),
+        "id":         str(uuid4()),
         "subject_id": subject_id,
         "student_id": student_id,
     }
 
-    ins = (
-        supabase.table("subject_enrollments").insert(enrollment).select("*").execute()
-    )
-    if getattr(ins, "error", None):
-        logger.error("Failed to enroll student: %s", ins.error)
+    # FIX: .insert(data).execute()  — no .select("*")
+    ins = supabase.table("subject_enrollments").insert(enrollment).execute()
+
+    if not ins.data:
+        logger.error("enroll_student: insert returned no data")
         raise RuntimeError("Unable to enroll student.")
 
-    created = ins.data[0] if isinstance(ins.data, list) else ins.data
-    return created
+    return ins.data[0] if isinstance(ins.data, list) else ins.data
 
 
 def unenroll_student(subject_id: str, student_id: str) -> None:
-    resp = (
+    check = (
         supabase.table("subject_enrollments")
-        .delete()
+        .select("id")
         .eq("subject_id", subject_id)
         .eq("student_id", student_id)
         .execute()
     )
-    if getattr(resp, "error", None):
-        logger.error("Failed to unenroll student %s from subject %s: %s", student_id, subject_id, resp.error)
-        raise RuntimeError("Unable to unenroll student.")
-    if not resp.data:
+    if not check.data:
         raise ValueError("Enrollment not found.")
+
+    # FIX: .delete().eq(...).execute()
+    supabase.table("subject_enrollments").delete().eq("subject_id", subject_id).eq("student_id", student_id).execute()
 
 
 def get_subject_students(subject_id: str) -> list[UserResponse]:
     resp = (
-        supabase.table("subject_enrollments").select("student_id").eq("subject_id", subject_id).execute()
+        supabase.table("subject_enrollments")
+        .select("student_id")
+        .eq("subject_id", subject_id)
+        .execute()
     )
-    if getattr(resp, "error", None):
-        logger.error("Failed to fetch enrollments for subject %s: %s", subject_id, resp.error)
-        raise RuntimeError("Unable to fetch subject students.")
-
     rows = resp.data or []
     student_ids = [r["student_id"] for r in rows]
     if not student_ids:
         return []
 
-    profiles = (
-        supabase.table("profiles").select("*").in_("id", student_ids).execute()
-    )
-    if getattr(profiles, "error", None):
-        logger.error("Failed to fetch profiles for students: %s", profiles.error)
-        raise RuntimeError("Unable to fetch student profiles.")
-
+    profiles = supabase.table("profiles").select("*").in_("id", student_ids).execute()
     return [
         UserResponse(
             id=p["id"],
@@ -217,22 +194,15 @@ def get_subject_students(subject_id: str) -> list[UserResponse]:
 
 def get_student_subjects(student_id: str) -> list[SubjectResponse]:
     resp = (
-        supabase.table("subject_enrollments").select("subject_id").eq("student_id", student_id).execute()
+        supabase.table("subject_enrollments")
+        .select("subject_id")
+        .eq("student_id", student_id)
+        .execute()
     )
-    if getattr(resp, "error", None):
-        logger.error("Failed to fetch enrollments for student %s: %s", student_id, resp.error)
-        raise RuntimeError("Unable to fetch student subjects.")
-
     rows = resp.data or []
     subject_ids = [r["subject_id"] for r in rows]
     if not subject_ids:
         return []
 
-    subs = (
-        supabase.table("subjects").select("*").in_("id", subject_ids).execute()
-    )
-    if getattr(subs, "error", None):
-        logger.error("Failed to fetch subjects for student %s: %s", student_id, subs.error)
-        raise RuntimeError("Unable to fetch subjects.")
-
+    subs = supabase.table("subjects").select("*").in_("id", subject_ids).execute()
     return [_build_subject_response(s) for s in (subs.data or [])]
