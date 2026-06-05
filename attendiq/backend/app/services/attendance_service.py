@@ -5,6 +5,7 @@
 # ============================================================
 
 import logging
+import math
 from uuid import uuid4
 from datetime import datetime
 from typing import Optional, List
@@ -17,6 +18,7 @@ from app.models.attendance import (
 )
 from app.services.face_service import recognize_faces
 from app.services.face_service import recognize_face
+from app.services.voice_service import recognize_voice
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +165,19 @@ def _get_subject_enrolled_student_ids(subject_id: str) -> list[str]:
     return [row["student_id"] for row in (response.data or [])]
 
 
+def _get_student_names(student_ids: list[str]) -> dict[str, str]:
+    if not student_ids:
+        return {}
+
+    response = (
+        supabase.table("profiles")
+        .select("id, full_name")
+        .in_("id", student_ids)
+        .execute()
+    )
+    return {row["id"]: row.get("full_name", "") for row in (response.data or [])}
+
+
 def group_face_checkin(session_id: str, image_bytes: bytes) -> dict:
     session_id = str(session_id)
     session = _get_session_row(session_id)
@@ -175,29 +190,48 @@ def group_face_checkin(session_id: str, image_bytes: bytes) -> dict:
         return {
             "present_count": 0,
             "absent_count": 0,
+            "attendance_percentage": 0.0,
             "present_students": [],
             "absent_students": [],
         }
 
+    student_names = _get_student_names(enrolled_student_ids)
     recognized = recognize_faces(image_bytes=image_bytes, student_ids=enrolled_student_ids)
-    recognized_student_ids = [r["student_id"] for r in recognized]
-    present_set = set(recognized_student_ids)
 
+    present_students = []
+    present_set = set()
     for match in recognized:
+        student_id = match.get("student_id")
+        if not student_id or student_id in present_set:
+            continue
+        present_set.add(student_id)
+        present_students.append({
+            "student_id": student_id,
+            "name": student_names.get(student_id, "Unknown"),
+            "confidence": float(match.get("confidence", 0.0)),
+        })
         mark_attendance(
             session_id=session_id,
-            student_id=str(match["student_id"]),
+            student_id=str(student_id),
             attendance_status="present",
             method="face",
-            confidence=match.get("confidence", 0.0),
+            confidence=float(match.get("confidence", 0.0)),
         )
 
-    absent_students = [sid for sid in enrolled_student_ids if sid not in present_set]
+    absent_students = [
+        {"student_id": sid, "name": student_names.get(sid, "Unknown")}
+        for sid in enrolled_student_ids
+        if sid not in present_set
+    ]
+
+    total_students = len(enrolled_student_ids)
+    attendance_percentage = round((len(present_students) / total_students) * 100.0, 2) if total_students else 0.0
 
     return {
-        "present_count": len(present_set),
+        "present_count": len(present_students),
         "absent_count": len(absent_students),
-        "present_students": recognized_student_ids,
+        "attendance_percentage": attendance_percentage,
+        "present_students": present_students,
         "absent_students": absent_students,
     }
 
@@ -220,6 +254,38 @@ def face_checkin(session_id: str, image_bytes: bytes) -> dict:
         student_id=student_id,
         attendance_status="present",
         method="face",
+        confidence=confidence,
+    )
+
+    return {
+        "attendance_marked": True,
+        "student_id": student_id,
+        "confidence": confidence,
+        "session_id": session_id,
+    }
+
+
+def voice_checkin(session_id: str, audio_bytes: bytes, original_filename: str = "recording.wav") -> dict:
+    session_id = str(session_id)
+    recognition = recognize_voice(audio_bytes=audio_bytes, original_filename=original_filename)
+
+    if not recognition.get("matched"):
+        return {"attendance_marked": False, "reason": "voice_not_recognized"}
+
+    student_id = str(recognition["student_id"])
+    confidence = float(recognition.get("confidence", 0.0))
+    print(f"DEBUG voice_checkin confidence={confidence}")
+
+    if math.isnan(confidence) or math.isinf(confidence):
+        confidence = 0.0
+
+    confidence = max(0.0, min(confidence, 1.0))
+
+    mark_attendance(
+        session_id=session_id,
+        student_id=student_id,
+        attendance_status="present",
+        method="voice",
         confidence=confidence,
     )
 

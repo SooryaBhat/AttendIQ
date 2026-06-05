@@ -54,11 +54,34 @@ class AttendanceRecordResponse(BaseModel):
         from_attributes = True
 
 
+class AttendancePresentStudent(BaseModel):
+    student_id: UUID
+    name: str
+    confidence: float
+
+
+class AttendanceAbsentStudent(BaseModel):
+    student_id: UUID
+    name: str
+
+
 class AttendanceGroupFaceCheckinResponse(BaseModel):
     present_count: int
     absent_count: int
-    present_students: List[UUID]
-    absent_students: List[UUID]
+    attendance_percentage: float
+    present_students: List[AttendancePresentStudent]
+    absent_students: List[AttendanceAbsentStudent]
+
+    class Config:
+        from_attributes = True
+
+
+class AttendanceVoiceCheckinResponse(BaseModel):
+    attendance_marked: bool
+    student_id: Optional[UUID] = None
+    confidence: Optional[float] = None
+    session_id: Optional[UUID] = None
+    reason: Optional[str] = None
 
     class Config:
         from_attributes = True

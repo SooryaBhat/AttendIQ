@@ -13,6 +13,7 @@ from app.models.attendance import (
     AttendanceSessionUpdate,
     AttendanceRecordResponse,
     AttendanceGroupFaceCheckinResponse,
+    AttendanceVoiceCheckinResponse,
 )
 from app.services.attendance_service import (
     create_session,
@@ -23,6 +24,7 @@ from app.services.attendance_service import (
     mark_attendance,
     get_session_attendance,
     face_checkin,
+    voice_checkin,
     group_face_checkin,
 )
 
@@ -40,6 +42,18 @@ _ALLOWED_CONTENT_TYPES = {
     "image/webp",
 }
 
+_ALLOWED_AUDIO_TYPES = {
+    "audio/wav",
+    "audio/wave",
+    "audio/x-wav",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/ogg",
+    "audio/flac",
+    "audio/x-flac",
+    "audio/webm",
+}
+
 
 def _validate_image_upload(file: UploadFile) -> None:
     if file.content_type not in _ALLOWED_CONTENT_TYPES:
@@ -48,6 +62,17 @@ def _validate_image_upload(file: UploadFile) -> None:
             detail=(
                 f"Unsupported file type '{file.content_type}'. "
                 f"Accepted types: JPEG, PNG, BMP, WEBP."
+            ),
+        )
+
+
+def _validate_audio_upload(file: UploadFile) -> None:
+    if file.content_type not in _ALLOWED_AUDIO_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=(
+                f"Unsupported file type '{file.content_type}'. "
+                f"Accepted types: WAV, MP3, OGG, FLAC, WEBM."
             ),
         )
 
@@ -204,6 +229,48 @@ async def group_face_checkin_route(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during group face check-in.",
+        ) from exc
+
+
+@router.post(
+    "/voice-checkin",
+    response_model=AttendanceVoiceCheckinResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Voice-based attendance check-in",
+)
+async def voice_checkin_route(
+    session_id: UUID = Form(..., description="UUID of the attendance session"),
+    audio: UploadFile = File(
+        ..., description="Student voice recording — WAV / MP3 / OGG / FLAC / WEBM, max 25 MB"
+    ),
+    current_user: UserResponse = Depends(get_current_user),
+) -> AttendanceVoiceCheckinResponse:
+    _validate_audio_upload(audio)
+    audio_bytes = await audio.read()
+
+    if len(audio_bytes) > 25 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large. Maximum allowed size is 25 MB.",
+        )
+
+    if len(audio_bytes) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+
+    try:
+        result = voice_checkin(str(session_id), audio_bytes, original_filename=audio.filename or "recording.wav")
+        return AttendanceVoiceCheckinResponse(**result)
+
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error during voice check-in: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during voice check-in.",
         ) from exc
 
 
