@@ -1,68 +1,240 @@
-<!-- Add/view/delete students (placeholder) -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Department Admin - Students</title>
-    <link rel="stylesheet" href="../assets/css/global.css" />
+    <title>AttendIQ | Students</title>
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
-    <link rel="stylesheet" href="../assets/css/components.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+    <style>
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+      .toolbar input,
+      .toolbar select {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.75rem 1rem;
+        background: var(--surface-muted);
+        color: var(--text);
+        font: inherit;
+        min-width: 200px;
+      }
+      .toolbar input:focus,
+      .toolbar select:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .toolbar-spacer { flex: 1; }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+      .badge-yes { background: rgba(20, 164, 77, 0.1); color: #14a44d; }
+      .badge-no  { background: rgba(16, 42, 67, 0.07); color: #52637a; }
+      .btn-sm {
+        padding: 0.45rem 0.85rem;
+        border-radius: 12px;
+        border: 1px solid rgba(16, 42, 67, 0.12);
+        background: #fff;
+        color: var(--text);
+        font-weight: 700;
+        font-size: 0.88rem;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+      .btn-sm:hover { background: #f1f5fb; }
+      .btn-sm-danger { color: #c21f3c; border-color: rgba(194, 31, 60, 0.18); }
+      .btn-sm-danger:hover { background: rgba(194, 31, 60, 0.06); }
+      .btn-sm-primary { color: #0f4bb2; border-color: rgba(15, 75, 178, 0.2); }
+      .btn-sm-primary:hover { background: rgba(15, 75, 178, 0.06); }
+      .empty-row td { text-align: center; color: #52637a; padding: 2.5rem !important; }
+      .modal-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, 1fr);
+      }
+      @media (max-width: 640px) { .modal-grid { grid-template-columns: 1fr; } }
+      .field-group { display: grid; gap: 0.4rem; }
+      .field-group label { font-weight: 600; color: var(--text); font-size: 0.9rem; }
+      .field-group input,
+      .field-group select {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.85rem 1rem;
+        background: var(--surface-muted);
+        color: var(--text);
+        font: inherit;
+        width: 100%;
+      }
+      .field-group input:focus,
+      .field-group select:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface-muted);
+        cursor: pointer;
+      }
+      .checkbox-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .btn-cancel {
+        padding: 0.75rem 1.5rem;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-save {
+        padding: 0.75rem 1.75rem;
+        border-radius: 14px;
+        border: none;
+        background: linear-gradient(135deg, #0f4bb2, #1f75d1);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        transition: filter 0.2s ease;
+      }
+      .btn-save:hover { filter: brightness(1.08); }
+      .toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        background: #102a43;
+        color: #fff;
+        border-radius: 16px;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        z-index: 9999;
+        transform: translateY(120%);
+        transition: transform 0.3s ease;
+        max-width: 340px;
+      }
+      .toast.show { transform: translateY(0); }
+      .toast.success { background: #14a44d; }
+      .toast.error   { background: #c21f3c; }
+      .page-heading-btn {
+        padding: 0.75rem 1.4rem;
+        border-radius: 16px;
+        border: none;
+        background: linear-gradient(135deg, #0f4bb2, #1f75d1);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .col-actions { white-space: nowrap; display: flex; gap: 0.4rem; }
+    </style>
   </head>
   <body>
-    <div class="page-shell">
+    <div class="app-shell">
       <aside class="sidebar">
-        <div class="brand">AttendIQ</div>
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Dept Admin</p>
+          </div>
+        </div>
         <nav class="sidebar-nav">
-          <a href="../dept_admin/dashboard.html">Dashboard</a>
-          <a href="students.html" class="active">Students</a>
-          <a href="../dept_admin/faculty.html">Faculty</a>
-          <a href="../super_admin/departments.html">Departments</a>
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="students.html" class="active">
+            <span class="nav-icon">🎓</span>
+            <span>Students</span>
+          </a>
+          <a href="faculty.html">
+            <span class="nav-icon">👨‍🏫</span>
+            <span>Faculty</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="reports.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
         </nav>
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color:rgba(255,255,255,0.72);font-size:0.95rem;line-height:1.5;">
+            Student management<br />Add, edit, and remove students.
+          </div>
+        </div>
       </aside>
 
-      <main class="main-content">
-        <header class="page-header">
-          <div>
-            <h1>Student Management</h1>
-            <p>Manage students in your department, including enrollment status and assignments.</p>
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Students</h1>
+            <p>Manage student records, enrollment details, and biometric status.</p>
           </div>
-          <button id="logoutButton" class="btn btn-secondary">Logout</button>
-        </header>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span><strong>Admin User</strong><small>Department admin</small></span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
 
-        <section class="panel">
-          <div class="panel-heading">
-            <h2>Search and Filter</h2>
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Student records</h2>
+            <p>Search, filter, and manage all enrolled students.</p>
           </div>
-          <div class="panel-body grid gap-sm">
-            <div class="form-group">
-              <label for="searchInput">Search students</label>
-              <input id="searchInput" type="search" placeholder="Name, email, roll number" />
-            </div>
-            <div class="form-group">
-              <label for="filterDepartment">Department</label>
-              <select id="filterDepartment">
-                <option value="">All departments</option>
-              </select>
-            </div>
-            <div class="form-group align-end">
-              <button id="searchButton" class="btn btn-primary">Apply</button>
-              <button id="clearButton" class="btn btn-secondary">Clear</button>
-            </div>
-          </div>
+          <button class="page-heading-btn" id="openAddModal">+ Add Student</button>
         </section>
 
-        <section class="panel">
-          <div class="panel-heading">
-            <h2>Student List</h2>
+        <div class="panel">
+          <div class="toolbar" style="margin-bottom:1.25rem;">
+            <input type="text" id="searchInput" placeholder="Search by name, roll number, or email…" />
+            <select id="filterDepartment">
+              <option value="">All departments</option>
+            </select>
+            <button class="btn btn-secondary" id="searchButton" style="padding:0.75rem 1.25rem;">Search</button>
+            <button class="btn btn-outline"   id="clearButton"  style="padding:0.75rem 1.25rem;">Clear</button>
           </div>
-          <div class="panel-body">
-            <table class="table" aria-label="Student list">
+
+          <div class="table-wrapper">
+            <table class="subject-table subject-table-rich">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Roll number</th>
+                  <th>Full Name</th>
+                  <th>Roll Number</th>
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Department</th>
@@ -71,61 +243,262 @@
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody id="studentsTableBody"></tbody>
+              <tbody id="studentsTableBody">
+                <tr><td colspan="8" style="text-align:center;color:#52637a;padding:2rem;">Loading students…</td></tr>
+              </tbody>
             </table>
           </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-heading">
-            <h2 id="formTitle">Add new student</h2>
-          </div>
-          <div class="panel-body">
-            <form id="studentsForm" class="form-grid">
-              <div class="form-group">
-                <label for="fullNameInput">Full name</label>
-                <input id="fullNameInput" type="text" required />
-              </div>
-              <div class="form-group">
-                <label for="rollNumberInput">Roll number</label>
-                <input id="rollNumberInput" type="text" required />
-              </div>
-              <div class="form-group">
-                <label for="emailInput">Email</label>
-                <input id="emailInput" type="email" required />
-              </div>
-              <div class="form-group">
-                <label for="phoneInput">Phone</label>
-                <input id="phoneInput" type="tel" />
-              </div>
-              <div class="form-group">
-                <label for="departmentSelect">Department</label>
-                <select id="departmentSelect" required>
-                  <option value="">Select department</option>
-                </select>
-              </div>
-              <div class="form-group checkbox-group">
-                <label>
-                  <input id="faceEnrolledInput" type="checkbox" /> Face enrolled
-                </label>
-              </div>
-              <div class="form-group checkbox-group">
-                <label>
-                  <input id="voiceEnrolledInput" type="checkbox" /> Voice enrolled
-                </label>
-              </div>
-              <div class="form-actions full-width">
-                <button type="submit" class="btn btn-primary">Save student</button>
-                <button id="resetButton" type="button" class="btn btn-secondary">Reset</button>
-              </div>
-            </form>
-          </div>
-        </section>
+        </div>
       </main>
     </div>
 
+    <!-- Add / Edit Modal -->
+    <div id="studentModalOverlay" class="modal-overlay">
+      <div class="modal" style="max-width:680px;width:100%;">
+        <div class="modal-header">
+          <div>
+            <h3 id="modalTitle">Add Student</h3>
+            <p id="modalSubtitle" style="margin:0.25rem 0 0;color:#52637a;font-size:0.92rem;">Fill in the details below.</p>
+          </div>
+          <button class="button button-outline" id="closeStudentModal">✕ Close</button>
+        </div>
+        <form id="studentsForm">
+          <div class="modal-grid">
+            <div class="field-group">
+              <label for="fullNameInput">Full Name *</label>
+              <input id="fullNameInput" type="text" placeholder="e.g. Jane Doe" required />
+            </div>
+            <div class="field-group">
+              <label for="rollNumberInput">Roll Number *</label>
+              <input id="rollNumberInput" type="text" placeholder="e.g. CS2024001" required />
+            </div>
+            <div class="field-group">
+              <label for="emailInput">Email *</label>
+              <input id="emailInput" type="email" placeholder="student@example.com" required />
+            </div>
+            <div class="field-group">
+              <label for="phoneInput">Phone</label>
+              <input id="phoneInput" type="tel" placeholder="+91 98765 43210" />
+            </div>
+            <div class="field-group">
+              <label for="departmentSelect">Department</label>
+              <select id="departmentSelect">
+                <option value="">Select department</option>
+              </select>
+            </div>
+            <div class="field-group" style="justify-content:end;gap:0.5rem;">
+              <label style="font-weight:600;font-size:0.9rem;color:#52637a;">Biometric enrollment</label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="faceEnrolledInput" />
+                <span>Face enrolled</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="voiceEnrolledInput" />
+                <span>Voice enrolled</span>
+              </label>
+            </div>
+          </div>
+          <div id="formTitle" style="display:none"></div>
+          <div id="resetButton" style="display:none"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="cancelStudentModal">Cancel</button>
+            <button type="submit" class="btn-save" id="saveStudentBtn">Save Student</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
     <script src="../assets/js/api.js"></script>
     <script src="../assets/js/dashboard.js"></script>
-    <script src="../assets/js/students.js"></script>
+    <script>
+      // ── DOM refs ────────────────────────────────────────────────────────────
+      const searchInput        = document.getElementById('searchInput');
+      const filterDepartment   = document.getElementById('filterDepartment');
+      const searchButton       = document.getElementById('searchButton');
+      const clearButton        = document.getElementById('clearButton');
+      const studentsTableBody  = document.getElementById('studentsTableBody');
+      const studentsForm       = document.getElementById('studentsForm');
+      const fullNameInput      = document.getElementById('fullNameInput');
+      const rollNumberInput    = document.getElementById('rollNumberInput');
+      const emailInput         = document.getElementById('emailInput');
+      const phoneInput         = document.getElementById('phoneInput');
+      const departmentSelect   = document.getElementById('departmentSelect');
+      const faceEnrolledInput  = document.getElementById('faceEnrolledInput');
+      const voiceEnrolledInput = document.getElementById('voiceEnrolledInput');
+      const modalOverlay       = document.getElementById('studentModalOverlay');
+      const modalTitle         = document.getElementById('modalTitle');
+      const openAddModalBtn    = document.getElementById('openAddModal');
+      const closeModalBtn      = document.getElementById('closeStudentModal');
+      const cancelModalBtn     = document.getElementById('cancelStudentModal');
+      const toastEl            = document.getElementById('toast');
+
+      let editingStudentId = null;
+      let departments = [];
+
+      // ── Toast ───────────────────────────────────────────────────────────────
+      function showToast(msg, type = '') {
+        toastEl.textContent = msg;
+        toastEl.className = 'toast show ' + type;
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(() => { toastEl.className = 'toast'; }, 3200);
+      }
+
+      // ── Modal helpers ───────────────────────────────────────────────────────
+      function openModal(title = 'Add Student') {
+        modalTitle.textContent = title;
+        modalOverlay.classList.add('open');
+      }
+      function closeModal() {
+        modalOverlay.classList.remove('open');
+        resetForm();
+      }
+
+      openAddModalBtn.addEventListener('click', () => openModal('Add Student'));
+      closeModalBtn.addEventListener('click', closeModal);
+      cancelModalBtn.addEventListener('click', closeModal);
+      modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+
+      // ── Departments ─────────────────────────────────────────────────────────
+      async function loadDepartments() {
+        try {
+          departments = await getDepartments();
+          filterDepartment.innerHTML = '<option value="">All departments</option>';
+          departmentSelect.innerHTML = '<option value="">Select department</option>';
+          departments.forEach(d => {
+            filterDepartment.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.name}</option>`);
+            departmentSelect.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.name}</option>`);
+          });
+        } catch (err) {
+          console.error('Could not load departments', err);
+        }
+      }
+
+      function getDeptName(id) {
+        const d = departments.find(x => x.id === id);
+        return d ? d.name : '—';
+      }
+
+      // ── Students table ──────────────────────────────────────────────────────
+      async function loadStudents() {
+        const search = searchInput.value.trim() || undefined;
+        const deptId = filterDepartment.value || undefined;
+        studentsTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#52637a;padding:2rem;">Loading…</td></tr>';
+        try {
+          const list = await getStudents(search, deptId);
+          renderTable(list);
+        } catch (err) {
+          studentsTableBody.innerHTML = `<tr class="empty-row"><td colspan="8">Failed to load students. ${err.message || ''}</td></tr>`;
+        }
+      }
+
+      function renderTable(list) {
+        if (!list.length) {
+          studentsTableBody.innerHTML = '<tr class="empty-row"><td colspan="8">No students found.</td></tr>';
+          return;
+        }
+        studentsTableBody.innerHTML = list.map(s => `
+          <tr>
+            <td><strong>${esc(s.full_name)}</strong></td>
+            <td>${esc(s.roll_number)}</td>
+            <td>${esc(s.email)}</td>
+            <td>${esc(s.phone || '—')}</td>
+            <td>${esc(getDeptName(s.department_id))}</td>
+            <td><span class="badge ${s.face_enrolled ? 'badge-yes' : 'badge-no'}">${s.face_enrolled ? '✓ Yes' : 'No'}</span></td>
+            <td><span class="badge ${s.voice_enrolled ? 'badge-yes' : 'badge-no'}">${s.voice_enrolled ? '✓ Yes' : 'No'}</span></td>
+            <td>
+              <div class="col-actions">
+                <button class="btn-sm btn-sm-primary" onclick="editStudent('${s.id}')">Edit</button>
+                <button class="btn-sm btn-sm-danger"  onclick="deleteStudentRecord('${s.id}')">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      function esc(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      // ── Edit ────────────────────────────────────────────────────────────────
+      async function editStudent(id) {
+        try {
+          const s = await getStudentById(id);
+          editingStudentId = id;
+          fullNameInput.value      = s.full_name;
+          rollNumberInput.value    = s.roll_number;
+          emailInput.value         = s.email;
+          phoneInput.value         = s.phone || '';
+          departmentSelect.value   = s.department_id || '';
+          faceEnrolledInput.checked  = !!s.face_enrolled;
+          voiceEnrolledInput.checked = !!s.voice_enrolled;
+          openModal('Edit Student');
+        } catch (err) {
+          showToast('Could not load student details.', 'error');
+        }
+      }
+
+      // ── Delete ──────────────────────────────────────────────────────────────
+      async function deleteStudentRecord(id) {
+        if (!confirm('Delete this student? This action cannot be undone.')) return;
+        try {
+          await deleteStudent(id);
+          showToast('Student deleted successfully.', 'success');
+          await loadStudents();
+        } catch (err) {
+          showToast('Could not delete student. ' + (err.message || ''), 'error');
+        }
+      }
+
+      // ── Reset form ──────────────────────────────────────────────────────────
+      function resetForm() {
+        editingStudentId = null;
+        studentsForm.reset();
+        departmentSelect.value = '';
+      }
+
+      // ── Submit ──────────────────────────────────────────────────────────────
+      studentsForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const payload = {
+          full_name:      fullNameInput.value.trim(),
+          roll_number:    rollNumberInput.value.trim(),
+          email:          emailInput.value.trim(),
+          phone:          phoneInput.value.trim() || null,
+          department_id:  departmentSelect.value || null,
+          face_enrolled:  faceEnrolledInput.checked,
+          voice_enrolled: voiceEnrolledInput.checked,
+        };
+        try {
+          if (editingStudentId) {
+            await updateStudent(editingStudentId, payload);
+            showToast('Student updated successfully.', 'success');
+          } else {
+            await createStudent(payload);
+            showToast('Student added successfully.', 'success');
+          }
+          closeModal();
+          await loadStudents();
+        } catch (err) {
+          showToast('Could not save student. ' + (err.message || ''), 'error');
+        }
+      });
+
+      // ── Search / clear ──────────────────────────────────────────────────────
+      searchButton.addEventListener('click', loadStudents);
+      clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        filterDepartment.value = '';
+        loadStudents();
+      });
+      searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadStudents(); });
+
+      // ── Init ────────────────────────────────────────────────────────────────
+      window.addEventListener('DOMContentLoaded', async () => {
+        await loadDepartments();
+        await loadStudents();
+      });
+    </script>
   </body>
 </html>

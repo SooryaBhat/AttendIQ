@@ -3,8 +3,106 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AttendIQ | Department Admin Dashboard</title>
+    <title>AttendIQ | Dept Admin Dashboard</title>
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+    <style>
+      .stat-card {
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 1.75rem;
+        box-shadow: 0 16px 36px rgba(16, 42, 67, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        border: 1px solid rgba(16, 42, 67, 0.06);
+      }
+      .stat-card-label {
+        color: #52637a;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .stat-card-value {
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: #0f4bb2;
+        line-height: 1;
+      }
+      .stat-card-sub {
+        color: #52637a;
+        font-size: 0.92rem;
+      }
+      .stat-card-icon {
+        font-size: 1.8rem;
+        margin-bottom: 0.25rem;
+      }
+      .loading-pulse {
+        display: inline-block;
+        width: 60px;
+        height: 2.8rem;
+        background: linear-gradient(90deg, #eef4ff 25%, #dde9ff 50%, #eef4ff 75%);
+        background-size: 200% 100%;
+        animation: pulse 1.4s ease-in-out infinite;
+        border-radius: 8px;
+      }
+      @keyframes pulse {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      .quick-links {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        margin-top: 0.5rem;
+      }
+      .quick-link-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 8px 24px rgba(16, 42, 67, 0.06);
+        border: 1px solid rgba(16, 42, 67, 0.06);
+        text-decoration: none;
+        color: #102a43;
+        font-weight: 600;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .quick-link-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 40px rgba(16, 42, 67, 0.12);
+      }
+      .quick-link-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: rgba(15, 75, 178, 0.08);
+        display: grid;
+        place-items: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+      }
+      .quick-link-text small {
+        display: block;
+        color: #52637a;
+        font-weight: 400;
+        font-size: 0.85rem;
+        margin-top: 0.15rem;
+      }
+      .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #102a43;
+        margin: 0 0 1rem;
+      }
+      .error-text {
+        color: #c21f3c;
+        font-size: 0.9rem;
+      }
+    </style>
   </head>
   <body>
     <div class="app-shell">
@@ -13,7 +111,7 @@
           <div class="brand-mark">AIQ</div>
           <div class="brand-text">
             <h2>AttendIQ</h2>
-            <p>Department Admin</p>
+            <p>Dept Admin</p>
           </div>
         </div>
 
@@ -30,24 +128,20 @@
             <span class="nav-icon">👨‍🏫</span>
             <span>Faculty</span>
           </a>
-          <a href="#subjects">
+          <a href="subjects.html">
             <span class="nav-icon">📚</span>
             <span>Subjects</span>
           </a>
-          <a href="#reports">
+          <a href="reports.html">
             <span class="nav-icon">📊</span>
             <span>Reports</span>
           </a>
         </nav>
 
         <div class="sidebar-footer">
-          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
-            ⇆
-          </button>
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
           <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
-            Department operations
-            <br />
-            Manage students, faculty, and attendance.
+            Department administration<br />Manage students, faculty, and subjects.
           </div>
         </div>
       </aside>
@@ -55,20 +149,17 @@
       <header class="topbar">
         <div class="topbar-left">
           <div class="topbar-title">
-            <h1>Department Admin Dashboard</h1>
-            <p>Track student engagement, faculty support, and subject attendance.</p>
+            <h1>Department Dashboard</h1>
+            <p>Overview of your department's students, faculty, and subjects.</p>
           </div>
         </div>
-
         <div class="topbar-actions">
-          <button type="button" class="notification-button" aria-label="Notifications">
-            🔔
-          </button>
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
           <div class="user-menu-container">
             <button type="button" class="user-menu-toggle" aria-expanded="false">
               <span>
-                <strong>Dept Admin</strong>
-                <small>Active department profile</small>
+                <strong>Admin User</strong>
+                <small>Department admin</small>
               </span>
               <span>▾</span>
             </button>
@@ -85,50 +176,114 @@
         <section class="page-heading">
           <div>
             <h2>Department overview</h2>
-            <p>Manage students, faculty, courses, and attendance performance in one place.</p>
+            <p>Real-time counts from the system — no stale data.</p>
           </div>
         </section>
 
-        <div class="card-grid">
-          <article class="card">
-            <h3>Students Count</h3>
-            <p class="metric-value">320</p>
-            <p>Currently enrolled students in your department.</p>
+        <div class="card-grid" style="margin-bottom: 2rem;">
+          <article class="stat-card">
+            <div class="stat-card-icon">🎓</div>
+            <div class="stat-card-label">Total Students</div>
+            <div class="stat-card-value" id="statStudents"><span class="loading-pulse"></span></div>
+            <div class="stat-card-sub" id="statStudentsSub">Loading…</div>
           </article>
 
-          <article class="card">
-            <h3>Faculty Count</h3>
-            <p class="metric-value">24</p>
-            <p>Active teaching staff and academic coordinators.</p>
+          <article class="stat-card">
+            <div class="stat-card-icon">👨‍🏫</div>
+            <div class="stat-card-label">Total Faculty</div>
+            <div class="stat-card-value" id="statFaculty"><span class="loading-pulse"></span></div>
+            <div class="stat-card-sub" id="statFacultySub">Loading…</div>
           </article>
 
-          <article class="card">
-            <h3>Active Subjects</h3>
-            <p class="metric-value">18</p>
-            <p>Courses currently available for the semester.</p>
-          </article>
-
-          <article class="card">
-            <h3>Attendance %</h3>
-            <p class="metric-value">88%</p>
-            <p>Today's average attendance rate for your department.</p>
+          <article class="stat-card">
+            <div class="stat-card-icon">📚</div>
+            <div class="stat-card-label">Total Subjects</div>
+            <div class="stat-card-value" id="statSubjects"><span class="loading-pulse"></span></div>
+            <div class="stat-card-sub" id="statSubjectsSub">Loading…</div>
           </article>
         </div>
 
-        <div class="card-grid" style="margin-top: 1.5rem;">
-          <article class="card">
-            <h3>Course health</h3>
-            <p>Monitor subject participation and identify low-attendance classes.</p>
-          </article>
-          <article class="card">
-            <h3>Faculty coordination</h3>
-            <p>Assign faculty to classes, review schedules, and support attendance workflows.</p>
-          </article>
+        <p class="section-title">Quick actions</p>
+        <div class="quick-links">
+          <a href="students.html" class="quick-link-card">
+            <div class="quick-link-icon">🎓</div>
+            <div class="quick-link-text">
+              Manage Students
+              <small>Add, edit, or remove student records</small>
+            </div>
+          </a>
+          <a href="faculty.html" class="quick-link-card">
+            <div class="quick-link-icon">👨‍🏫</div>
+            <div class="quick-link-text">
+              Manage Faculty
+              <small>Add, edit, or remove faculty members</small>
+            </div>
+          </a>
+          <a href="subjects.html" class="quick-link-card">
+            <div class="quick-link-icon">📚</div>
+            <div class="quick-link-text">
+              Manage Subjects
+              <small>Create and configure subjects</small>
+            </div>
+          </a>
+          <a href="reports.html" class="quick-link-card">
+            <div class="quick-link-icon">📊</div>
+            <div class="quick-link-text">
+              View Reports
+              <small>Attendance analytics and exports</small>
+            </div>
+          </a>
         </div>
       </main>
     </div>
 
+    <script src="../assets/js/api.js"></script>
     <script src="../assets/js/dashboard.js"></script>
+    <script>
+      async function getSubjects() {
+        return request('/subjects');
+      }
+
+      async function loadDashboardStats() {
+        try {
+          const [students, faculties, subjects] = await Promise.allSettled([
+            getStudents(),
+            getFaculties(),
+            getSubjects()
+          ]);
+
+          if (students.status === 'fulfilled') {
+            const count = Array.isArray(students.value) ? students.value.length : 0;
+            document.getElementById('statStudents').textContent = count;
+            document.getElementById('statStudentsSub').textContent = count === 1 ? '1 student enrolled' : `${count} students enrolled`;
+          } else {
+            document.getElementById('statStudents').innerHTML = '<span class="error-text">—</span>';
+            document.getElementById('statStudentsSub').textContent = 'Could not load';
+          }
+
+          if (faculties.status === 'fulfilled') {
+            const count = Array.isArray(faculties.value) ? faculties.value.length : 0;
+            document.getElementById('statFaculty').textContent = count;
+            document.getElementById('statFacultySub').textContent = count === 1 ? '1 faculty member' : `${count} faculty members`;
+          } else {
+            document.getElementById('statFaculty').innerHTML = '<span class="error-text">—</span>';
+            document.getElementById('statFacultySub').textContent = 'Could not load';
+          }
+
+          if (subjects.status === 'fulfilled') {
+            const count = Array.isArray(subjects.value) ? subjects.value.length : 0;
+            document.getElementById('statSubjects').textContent = count;
+            document.getElementById('statSubjectsSub').textContent = count === 1 ? '1 active subject' : `${count} active subjects`;
+          } else {
+            document.getElementById('statSubjects').innerHTML = '<span class="error-text">—</span>';
+            document.getElementById('statSubjectsSub').textContent = 'Could not load';
+          }
+        } catch (err) {
+          console.error('Dashboard stats error:', err);
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', loadDashboardStats);
+    </script>
   </body>
 </html>
-

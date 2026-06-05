@@ -2,65 +2,247 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Department Admin - Faculty</title>
-    <link rel="stylesheet" href="../assets/css/global.css" />
+    <title>AttendIQ | Faculty</title>
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
-    <link rel="stylesheet" href="../assets/css/components.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+    <style>
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+      .toolbar input,
+      .toolbar select {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.75rem 1rem;
+        background: var(--surface-muted);
+        color: var(--text);
+        font: inherit;
+        min-width: 200px;
+      }
+      .toolbar input:focus,
+      .toolbar select:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+      .badge-active   { background: rgba(20, 164, 77, 0.1); color: #14a44d; }
+      .badge-inactive { background: rgba(16, 42, 67, 0.07); color: #52637a; }
+      .btn-sm {
+        padding: 0.45rem 0.85rem;
+        border-radius: 12px;
+        border: 1px solid rgba(16, 42, 67, 0.12);
+        background: #fff;
+        color: var(--text);
+        font-weight: 700;
+        font-size: 0.88rem;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+      .btn-sm:hover         { background: #f1f5fb; }
+      .btn-sm-danger        { color: #c21f3c; border-color: rgba(194,31,60,0.18); }
+      .btn-sm-danger:hover  { background: rgba(194,31,60,0.06); }
+      .btn-sm-primary       { color: #0f4bb2; border-color: rgba(15,75,178,0.2); }
+      .btn-sm-primary:hover { background: rgba(15,75,178,0.06); }
+      .empty-row td { text-align: center; color: #52637a; padding: 2.5rem !important; }
+      .modal-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, 1fr);
+      }
+      @media (max-width: 640px) { .modal-grid { grid-template-columns: 1fr; } }
+      .field-group { display: grid; gap: 0.4rem; }
+      .field-group label { font-weight: 600; color: var(--text); font-size: 0.9rem; }
+      .field-group input,
+      .field-group select {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.85rem 1rem;
+        background: var(--surface-muted);
+        color: var(--text);
+        font: inherit;
+        width: 100%;
+      }
+      .field-group input:focus,
+      .field-group select:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface-muted);
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .checkbox-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .btn-cancel {
+        padding: 0.75rem 1.5rem;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-save {
+        padding: 0.75rem 1.75rem;
+        border-radius: 14px;
+        border: none;
+        background: linear-gradient(135deg, #0f4bb2, #1f75d1);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        transition: filter 0.2s ease;
+      }
+      .btn-save:hover { filter: brightness(1.08); }
+      .toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        background: #102a43;
+        color: #fff;
+        border-radius: 16px;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        z-index: 9999;
+        transform: translateY(120%);
+        transition: transform 0.3s ease;
+        max-width: 340px;
+      }
+      .toast.show    { transform: translateY(0); }
+      .toast.success { background: #14a44d; }
+      .toast.error   { background: #c21f3c; }
+      .page-heading-btn {
+        padding: 0.75rem 1.4rem;
+        border-radius: 16px;
+        border: none;
+        background: linear-gradient(135deg, #0f4bb2, #1f75d1);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .col-actions { display: flex; gap: 0.4rem; white-space: nowrap; }
+      .help-note {
+        font-size: 0.85rem;
+        color: #52637a;
+        margin: 0;
+        padding: 0.6rem 1rem;
+        background: rgba(15,75,178,0.05);
+        border-radius: 10px;
+        border-left: 3px solid rgba(15,75,178,0.3);
+      }
+    </style>
   </head>
   <body>
-    <div class="page-shell">
+    <div class="app-shell">
       <aside class="sidebar">
-        <div class="brand">AttendIQ</div>
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Dept Admin</p>
+          </div>
+        </div>
         <nav class="sidebar-nav">
-          <a href="../dept_admin/dashboard.html">Dashboard</a>
-          <a href="../dept_admin/students.html">Students</a>
-          <a href="faculty.html" class="active">Faculty</a>
-          <a href="../super_admin/departments.html">Departments</a>
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="students.html">
+            <span class="nav-icon">🎓</span>
+            <span>Students</span>
+          </a>
+          <a href="faculty.html" class="active">
+            <span class="nav-icon">👨‍🏫</span>
+            <span>Faculty</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="reports.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
         </nav>
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color:rgba(255,255,255,0.72);font-size:0.95rem;line-height:1.5;">
+            Faculty management<br />Add, edit, and remove faculty.
+          </div>
+        </div>
       </aside>
 
-      <main class="main-content">
-        <header class="page-header">
-          <div>
-            <h1>Faculty Management</h1>
-            <p>Manage faculty profiles and assignments for your department.</p>
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Faculty</h1>
+            <p>Manage faculty accounts, departments, and active status.</p>
           </div>
-          <a href="#logout" class="btn btn-secondary">Logout</a>
-        </header>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span><strong>Admin User</strong><small>Department admin</small></span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
 
-        <section class="panel">
-          <div class="panel-heading">
-            <h2>Search and Filter</h2>
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Faculty records</h2>
+            <p>Search, filter, and manage all faculty members.</p>
           </div>
-          <div class="panel-body grid gap-sm">
-            <div class="form-group">
-              <label for="facultySearchInput">Search faculty</label>
-              <input id="facultySearchInput" type="search" placeholder="Name or email" />
-            </div>
-            <div class="form-group">
-              <label for="facultyFilterDepartment">Department</label>
-              <select id="facultyFilterDepartment">
-                <option value="">All departments</option>
-              </select>
-            </div>
-            <div class="form-group align-end">
-              <button id="facultySearchButton" class="btn btn-primary">Apply</button>
-              <button id="facultyClearButton" class="btn btn-secondary">Clear</button>
-            </div>
-          </div>
+          <button class="page-heading-btn" id="openAddModal">+ Add Faculty</button>
         </section>
 
-        <section class="panel">
-          <div class="panel-heading">
-            <h2>Faculty List</h2>
+        <div class="panel">
+          <div class="toolbar" style="margin-bottom:1.25rem;">
+            <input type="text" id="facultySearchInput" placeholder="Search by name or email…" />
+            <select id="facultyFilterDepartment">
+              <option value="">All departments</option>
+            </select>
+            <button class="btn btn-secondary" id="facultySearchButton" style="padding:0.75rem 1.25rem;">Search</button>
+            <button class="btn btn-outline"   id="facultyClearButton"  style="padding:0.75rem 1.25rem;">Clear</button>
           </div>
-          <div class="panel-body">
-            <table class="table" aria-label="Faculty list">
+
+          <div class="table-wrapper">
+            <table class="subject-table subject-table-rich">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Full Name</th>
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Department</th>
@@ -68,56 +250,263 @@
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody id="facultyTableBody"></tbody>
+              <tbody id="facultyTableBody">
+                <tr><td colspan="6" style="text-align:center;color:#52637a;padding:2rem;">Loading faculty…</td></tr>
+              </tbody>
             </table>
           </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-heading">
-            <h2 id="facultyFormTitle">Add new faculty</h2>
-          </div>
-          <div class="panel-body">
-            <form id="facultyForm" class="form-grid">
-              <div class="form-group">
-                <label for="facultyNameInput">Full name</label>
-                <input id="facultyNameInput" type="text" required />
-              </div>
-              <div class="form-group">
-                <label for="facultyEmailInput">Email</label>
-                <input id="facultyEmailInput" type="email" required />
-              </div>
-              <div class="form-group">
-                <label for="facultyPhoneInput">Phone</label>
-                <input id="facultyPhoneInput" type="tel" />
-              </div>
-              <div class="form-group">
-                <label for="facultyDepartmentSelect">Department</label>
-                <select id="facultyDepartmentSelect" required>
-                  <option value="">Select department</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="facultyPasswordInput">Password</label>
-                <input id="facultyPasswordInput" type="password" placeholder="Leave blank to use default" />
-              </div>
-              <div class="form-group checkbox-group">
-                <label>
-                  <input id="facultyActiveInput" type="checkbox" checked /> Active
-                </label>
-              </div>
-              <div class="form-actions full-width">
-                <button type="submit" class="btn btn-primary">Save faculty</button>
-                <button id="facultyResetButton" type="button" class="btn btn-secondary">Reset</button>
-              </div>
-            </form>
-          </div>
-        </section>
+        </div>
       </main>
     </div>
 
+    <!-- Add / Edit Modal -->
+    <div id="facultyModalOverlay" class="modal-overlay">
+      <div class="modal" style="max-width:680px;width:100%;">
+        <div class="modal-header">
+          <div>
+            <h3 id="facultyModalTitle">Add Faculty</h3>
+            <p style="margin:0.25rem 0 0;color:#52637a;font-size:0.92rem;">Fill in the details below.</p>
+          </div>
+          <button class="button button-outline" id="closeFacultyModal">✕ Close</button>
+        </div>
+        <form id="facultyForm">
+          <div class="modal-grid">
+            <div class="field-group">
+              <label for="facultyNameInput">Full Name *</label>
+              <input id="facultyNameInput" type="text" placeholder="e.g. Dr. John Smith" required />
+            </div>
+            <div class="field-group">
+              <label for="facultyEmailInput">Email *</label>
+              <input id="facultyEmailInput" type="email" placeholder="faculty@example.com" required />
+            </div>
+            <div class="field-group">
+              <label for="facultyPhoneInput">Phone</label>
+              <input id="facultyPhoneInput" type="tel" placeholder="+91 98765 43210" />
+            </div>
+            <div class="field-group">
+              <label for="facultyDepartmentSelect">Department</label>
+              <select id="facultyDepartmentSelect">
+                <option value="">Select department</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="facultyPasswordInput">Password <span id="pwLabel" style="font-weight:400;color:#52637a;">(required for new faculty)</span></label>
+              <input id="facultyPasswordInput" type="password" placeholder="Set a password" autocomplete="new-password" />
+            </div>
+            <div class="field-group" style="justify-content:end;">
+              <label style="font-weight:600;font-size:0.9rem;color:#52637a;">Account status</label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="facultyActiveInput" checked />
+                <span>Active account</span>
+              </label>
+            </div>
+          </div>
+          <p class="help-note" id="editPasswordNote" style="display:none;margin-top:0.75rem;">
+            Leave the password field blank to keep the existing password unchanged.
+          </p>
+          <div id="facultyFormTitle"  style="display:none"></div>
+          <div id="facultyResetButton" style="display:none"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="cancelFacultyModal">Cancel</button>
+            <button type="submit" class="btn-save">Save Faculty</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
     <script src="../assets/js/api.js"></script>
     <script src="../assets/js/dashboard.js"></script>
-    <script src="../assets/js/faculty.js"></script>
+    <script>
+      // ── DOM refs ────────────────────────────────────────────────────────────
+      const facultySearchInput      = document.getElementById('facultySearchInput');
+      const facultyFilterDepartment = document.getElementById('facultyFilterDepartment');
+      const facultySearchButton     = document.getElementById('facultySearchButton');
+      const facultyClearButton      = document.getElementById('facultyClearButton');
+      const facultyTableBody        = document.getElementById('facultyTableBody');
+      const facultyForm             = document.getElementById('facultyForm');
+      const facultyModalTitle       = document.getElementById('facultyModalTitle');
+      const facultyNameInput        = document.getElementById('facultyNameInput');
+      const facultyEmailInput       = document.getElementById('facultyEmailInput');
+      const facultyPhoneInput       = document.getElementById('facultyPhoneInput');
+      const facultyDepartmentSelect = document.getElementById('facultyDepartmentSelect');
+      const facultyPasswordInput    = document.getElementById('facultyPasswordInput');
+      const facultyActiveInput      = document.getElementById('facultyActiveInput');
+      const modalOverlay            = document.getElementById('facultyModalOverlay');
+      const openAddModalBtn         = document.getElementById('openAddModal');
+      const closeModalBtn           = document.getElementById('closeFacultyModal');
+      const cancelModalBtn          = document.getElementById('cancelFacultyModal');
+      const editPasswordNote        = document.getElementById('editPasswordNote');
+      const toastEl                 = document.getElementById('toast');
+
+      let editingFacultyId = null;
+      let facultyDepartments = [];
+
+      // ── Toast ───────────────────────────────────────────────────────────────
+      function showToast(msg, type = '') {
+        toastEl.textContent = msg;
+        toastEl.className = 'toast show ' + type;
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(() => { toastEl.className = 'toast'; }, 3200);
+      }
+
+      // ── Modal helpers ───────────────────────────────────────────────────────
+      function openModal(isEdit = false) {
+        facultyModalTitle.textContent = isEdit ? 'Edit Faculty' : 'Add Faculty';
+        editPasswordNote.style.display = isEdit ? 'block' : 'none';
+        document.getElementById('pwLabel').style.display = isEdit ? 'none' : '';
+        modalOverlay.classList.add('open');
+      }
+      function closeModal() {
+        modalOverlay.classList.remove('open');
+        resetForm();
+      }
+
+      openAddModalBtn.addEventListener('click', () => openModal(false));
+      closeModalBtn.addEventListener('click', closeModal);
+      cancelModalBtn.addEventListener('click', closeModal);
+      modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+
+      // ── Departments ─────────────────────────────────────────────────────────
+      async function loadFacultyDepartments() {
+        try {
+          facultyDepartments = await getDepartments();
+          facultyFilterDepartment.innerHTML = '<option value="">All departments</option>';
+          facultyDepartmentSelect.innerHTML = '<option value="">Select department</option>';
+          facultyDepartments.forEach(d => {
+            facultyFilterDepartment.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.name}</option>`);
+            facultyDepartmentSelect.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.name}</option>`);
+          });
+        } catch (err) {
+          console.error('Could not load departments', err);
+        }
+      }
+
+      function getFacultyDeptName(id) {
+        const d = facultyDepartments.find(x => x.id === id);
+        return d ? d.name : '—';
+      }
+
+      // ── Faculty table ───────────────────────────────────────────────────────
+      async function loadFaculty() {
+        const search = facultySearchInput.value.trim() || undefined;
+        const deptId = facultyFilterDepartment.value || undefined;
+        facultyTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#52637a;padding:2rem;">Loading…</td></tr>';
+        try {
+          const list = await getFaculties(search, deptId);
+          renderFacultyTable(list);
+        } catch (err) {
+          facultyTableBody.innerHTML = `<tr class="empty-row"><td colspan="6">Failed to load faculty. ${err.message || ''}</td></tr>`;
+        }
+      }
+
+      function renderFacultyTable(list) {
+        if (!list.length) {
+          facultyTableBody.innerHTML = '<tr class="empty-row"><td colspan="6">No faculty found.</td></tr>';
+          return;
+        }
+        facultyTableBody.innerHTML = list.map(f => `
+          <tr>
+            <td><strong>${esc(f.full_name)}</strong></td>
+            <td>${esc(f.email)}</td>
+            <td>${esc(f.phone || '—')}</td>
+            <td>${esc(getFacultyDeptName(f.department_id))}</td>
+            <td><span class="badge ${f.is_active ? 'badge-active' : 'badge-inactive'}">${f.is_active ? '● Active' : '○ Inactive'}</span></td>
+            <td>
+              <div class="col-actions">
+                <button class="btn-sm btn-sm-primary" onclick="editFaculty('${f.id}')">Edit</button>
+                <button class="btn-sm btn-sm-danger"  onclick="deleteFacultyRecord('${f.id}')">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      function esc(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      // ── Edit ────────────────────────────────────────────────────────────────
+      async function editFaculty(id) {
+        try {
+          const f = await getFacultyById(id);
+          editingFacultyId = id;
+          facultyNameInput.value        = f.full_name;
+          facultyEmailInput.value       = f.email;
+          facultyPhoneInput.value       = f.phone || '';
+          facultyDepartmentSelect.value = f.department_id || '';
+          facultyActiveInput.checked    = !!f.is_active;
+          facultyPasswordInput.value    = '';
+          openModal(true);
+        } catch (err) {
+          showToast('Could not load faculty details.', 'error');
+        }
+      }
+
+      // ── Delete ──────────────────────────────────────────────────────────────
+      async function deleteFacultyRecord(id) {
+        if (!confirm('Delete this faculty member? This action cannot be undone.')) return;
+        try {
+          await deleteFaculty(id);
+          showToast('Faculty member deleted successfully.', 'success');
+          await loadFaculty();
+        } catch (err) {
+          showToast('Could not delete faculty. ' + (err.message || ''), 'error');
+        }
+      }
+
+      // ── Reset form ──────────────────────────────────────────────────────────
+      function resetForm() {
+        editingFacultyId = null;
+        facultyForm.reset();
+        facultyDepartmentSelect.value = '';
+        facultyActiveInput.checked = true;
+      }
+
+      // ── Submit ──────────────────────────────────────────────────────────────
+      facultyForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const pw = facultyPasswordInput.value.trim();
+        const payload = {
+          full_name:     facultyNameInput.value.trim(),
+          email:         facultyEmailInput.value.trim(),
+          phone:         facultyPhoneInput.value.trim() || null,
+          department_id: facultyDepartmentSelect.value || null,
+          is_active:     facultyActiveInput.checked,
+        };
+        if (pw) payload.password = pw;
+
+        try {
+          if (editingFacultyId) {
+            await updateFaculty(editingFacultyId, payload);
+            showToast('Faculty updated successfully.', 'success');
+          } else {
+            if (!pw) { showToast('Password is required for new faculty.', 'error'); return; }
+            await createFaculty(payload);
+            showToast('Faculty added successfully.', 'success');
+          }
+          closeModal();
+          await loadFaculty();
+        } catch (err) {
+          showToast('Could not save faculty. ' + (err.message || ''), 'error');
+        }
+      });
+
+      // ── Search / clear ──────────────────────────────────────────────────────
+      facultySearchButton.addEventListener('click', loadFaculty);
+      facultyClearButton.addEventListener('click', () => {
+        facultySearchInput.value = '';
+        facultyFilterDepartment.value = '';
+        loadFaculty();
+      });
+      facultySearchInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadFaculty(); });
+
+      // ── Init ────────────────────────────────────────────────────────────────
+      window.addEventListener('DOMContentLoaded', async () => {
+        await loadFacultyDepartments();
+        await loadFaculty();
+      });
+    </script>
   </body>
 </html>
