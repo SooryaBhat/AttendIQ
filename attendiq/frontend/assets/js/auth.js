@@ -4,6 +4,9 @@ const statusMessage = document.getElementById("statusMessage");
 const roleRedirectMap = {
   super_admin: "../super_admin/dashboard.html",
   dept_admin: "../dept_admin/dashboard.html",
+  // Backend returns "department_admin" for department administrators.
+  // Accept both keys for compatibility.
+  department_admin: "../dept_admin/dashboard.html",
   faculty: "../faculty/dashboard.html",
   student: "../student/dashboard.html",
 };

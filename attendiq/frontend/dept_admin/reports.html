@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AttendIQ | Reports</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <style>
+      .cards { display:grid; grid-template-columns: repeat(4,1fr); gap:1rem; margin-bottom:1rem; }
+      @media (max-width:900px){ .cards{grid-template-columns:repeat(2,1fr);} }
+      @media (max-width:520px){ .cards{grid-template-columns:1fr;} }
+      .card { background:var(--card-bg); border-radius:12px; padding:1rem; box-shadow:var(--card-shadow); }
+      .card h3{ margin:0;font-size:1.1rem;color:var(--muted); }
+      .card .metric{ font-size:1.6rem;font-weight:800;margin-top:0.4rem; }
+      .reports-grid{ display:grid; grid-template-columns: 2fr 1fr; gap:1rem; }
+      @media (max-width:900px){ .reports-grid{grid-template-columns:1fr;} }
+      .chart-card{ padding:1rem; border-radius:12px; background:var(--card-bg); }
+      .table-card{ padding:1rem; border-radius:12px; background:var(--card-bg); }
+      .table { width:100%; border-collapse:collapse; }
+      .table th, .table td{ padding:0.6rem 0.5rem; text-align:left; border-bottom:1px solid var(--border); }
+      .table tbody tr:last-child td{ border-bottom:none; }
+      .placeholder { color:var(--muted); padding:2rem; text-align:center; }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text"><h2>AttendIQ</h2><p>Dept Admin</p></div>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">🏠<span>Dashboard</span></a>
+          <a href="students.html">🎓<span>Students</span></a>
+          <a href="faculty.html">👨‍🏫<span>Faculty</span></a>
+          <a href="subjects.html">📚<span>Subjects</span></a>
+          <a href="reports.html" class="active">📊<span>Reports</span></a>
+        </nav>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left"><div class="topbar-title"><h1>Reports</h1><p>Attendance analytics and summaries.</p></div></div>
+        <div class="topbar-actions"></div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div><h2>Analytics</h2><p>Visualize attendance and student distribution.</p></div>
+        </section>
+
+        <div class="cards">
+          <div class="card">
+            <h3>Total Students</h3>
+            <div id="cardTotalStudents" class="metric">—</div>
+          </div>
+          <div class="card">
+            <h3>Total Faculty</h3>
+            <div id="cardTotalFaculty" class="metric">—</div>
+          </div>
+          <div class="card">
+            <h3>Total Subjects</h3>
+            <div id="cardTotalSubjects" class="metric">—</div>
+          </div>
+          <div class="card">
+            <h3>Attendance Sessions</h3>
+            <div id="cardAttendanceSessions" class="metric">—</div>
+          </div>
+        </div>
+
+        <div class="reports-grid">
+          <div>
+            <div class="chart-card">
+              <h4>Students by Department</h4>
+              <canvas id="chartStudentsByDept" height="220"></canvas>
+              <div id="chartStudentsByDeptPlaceholder" class="placeholder" style="display:none">Analytics unavailable. TODO: connect `/analytics/students-by-department` backend endpoint.</div>
+            </div>
+
+            <div class="chart-card" style="margin-top:1rem;">
+              <h4>Attendance Trend</h4>
+              <canvas id="chartAttendanceTrend" height="160"></canvas>
+              <div id="chartAttendanceTrendPlaceholder" class="placeholder" style="display:none">Analytics unavailable. TODO: connect `/analytics/attendance-trend` backend endpoint.</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="chart-card">
+              <h4>Department Attendance Comparison</h4>
+              <canvas id="chartDeptComparison" height="280"></canvas>
+              <div id="chartDeptComparisonPlaceholder" class="placeholder" style="display:none">Analytics unavailable. TODO: connect `/analytics/department-comparison` backend endpoint.</div>
+            </div>
+
+            <div class="table-card" style="margin-top:1rem;">
+              <h4>Top Attendance Students</h4>
+              <div id="topStudentsPlaceholder" class="placeholder" style="display:none">TODO: connect `/attendance/top-students` endpoint.</div>
+              <table id="topStudentsTable" class="table" style="display:none">
+                <thead><tr><th>Student</th><th>Department</th><th>Attendance %</th></tr></thead>
+                <tbody id="topStudentsBody"></tbody>
+              </table>
+            </div>
+
+            <div class="table-card" style="margin-top:1rem;">
+              <h4>Low Attendance Students</h4>
+              <div id="lowStudentsPlaceholder" class="placeholder" style="display:none">TODO: connect `/attendance/low-students` endpoint.</div>
+              <table id="lowStudentsTable" class="table" style="display:none">
+                <thead><tr><th>Student</th><th>Department</th><th>Attendance %</th></tr></thead>
+                <tbody id="lowStudentsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script>
+      // Helper to safely render metrics
+      function setMetric(id, value){ document.getElementById(id).textContent = (value===null||value===undefined)? '—' : value; }
+
+      async function loadSummary(){
+        try{
+          // Try common summary endpoint(s) - backend may provide different names
+          const resp = await request('/analytics/summary');
+          if (resp){
+            setMetric('cardTotalStudents', resp.total_students ?? '—');
+            setMetric('cardTotalFaculty', resp.total_faculty ?? '—');
+            setMetric('cardTotalSubjects', resp.total_subjects ?? '—');
+            setMetric('cardAttendanceSessions', resp.attendance_sessions ?? '—');
+            return;
+          }
+        }catch(e){ /* ignore and fallback */ }
+
+        // Fallback: try separate endpoints
+        try{ const sts = await request('/students'); setMetric('cardTotalStudents', Array.isArray(sts)? sts.length : '—'); }catch(e){ setMetric('cardTotalStudents','—'); }
+        try{ const f = await request('/faculties'); setMetric('cardTotalFaculty', Array.isArray(f)? f.length : '—'); }catch(e){ setMetric('cardTotalFaculty','—'); }
+        try{ const sub = await request('/subjects'); setMetric('cardTotalSubjects', Array.isArray(sub)? sub.length : '—'); }catch(e){ setMetric('cardTotalSubjects','—'); }
+        try{ const sessions = await request('/attendance/sessions'); setMetric('cardAttendanceSessions', Array.isArray(sessions)? sessions.length : '—'); }catch(e){ setMetric('cardAttendanceSessions','—'); }
+      }
+
+      // Charts
+      let chartStudentsByDept, chartAttendanceTrend, chartDeptComparison;
+
+      async function loadStudentsByDept(){
+        const placeholder = document.getElementById('chartStudentsByDeptPlaceholder');
+        try{
+          const payload = await request('/analytics/students-by-department');
+          if (!payload || !payload.labels) throw new Error('no-data');
+          placeholder.style.display='none';
+          const ctx = document.getElementById('chartStudentsByDept').getContext('2d');
+          chartStudentsByDept = new Chart(ctx, { type:'bar', data:{ labels: payload.labels, datasets:[{ label:'Students', data: payload.data, backgroundColor: 'rgba(15,75,178,0.7)'}] }, options:{ responsive:true } });
+        }catch(e){ placeholder.style.display='block'; }
+      }
+
+      async function loadAttendanceTrend(){
+        const placeholder = document.getElementById('chartAttendanceTrendPlaceholder');
+        try{
+          const payload = await request('/analytics/attendance-trend');
+          if (!payload || !payload.labels) throw new Error('no-data');
+          placeholder.style.display='none';
+          const ctx = document.getElementById('chartAttendanceTrend').getContext('2d');
+          chartAttendanceTrend = new Chart(ctx, { type:'line', data:{ labels: payload.labels, datasets:[{ label:'Attendance %', data: payload.data, borderColor:'#0f4bb2', backgroundColor:'rgba(15,75,178,0.06)', tension:0.2 }] }, options:{ responsive:true } });
+        }catch(e){ placeholder.style.display='block'; }
+      }
+
+      async function loadDeptComparison(){
+        const placeholder = document.getElementById('chartDeptComparisonPlaceholder');
+        try{
+          const payload = await request('/analytics/department-comparison');
+          if (!payload || !payload.labels) throw new Error('no-data');
+          placeholder.style.display='none';
+          const ctx = document.getElementById('chartDeptComparison').getContext('2d');
+          chartDeptComparison = new Chart(ctx, { type:'doughnut', data:{ labels: payload.labels, datasets:[{ data: payload.data, backgroundColor: payload.labels.map((_,i)=>`hsl(${i*50%360} 70% 50%)`) }] }, options:{ responsive:true } });
+        }catch(e){ placeholder.style.display='block'; }
+      }
+
+      // Tables (top/low attendance)
+      async function loadTopLowStudents(){
+        try{
+          const top = await request('/attendance/top-students');
+          if (Array.isArray(top) && top.length){
+            document.getElementById('topStudentsPlaceholder').style.display='none';
+            const tb = document.getElementById('topStudentsBody'); tb.innerHTML='';
+            top.forEach(s => { const tr = `<tr><td>${esc(s.full_name||s.name)}</td><td>${esc(s.department_name||'—')}</td><td>${(s.attendance_percent||0).toFixed? (s.attendance_percent.toFixed(1)+'%') : esc(s.attendance_percent)}</td></tr>`; tb.insertAdjacentHTML('beforeend',tr); });
+            document.getElementById('topStudentsTable').style.display='table';
+          } else { document.getElementById('topStudentsPlaceholder').style.display='block'; }
+        }catch(e){ document.getElementById('topStudentsPlaceholder').style.display='block'; }
+
+        try{
+          const low = await request('/attendance/low-students');
+          if (Array.isArray(low) && low.length){
+            document.getElementById('lowStudentsPlaceholder').style.display='none';
+            const tb = document.getElementById('lowStudentsBody'); tb.innerHTML='';
+            low.forEach(s => { const tr = `<tr><td>${esc(s.full_name||s.name)}</td><td>${esc(s.department_name||'—')}</td><td>${(s.attendance_percent||0).toFixed? (s.attendance_percent.toFixed(1)+'%') : esc(s.attendance_percent)}</td></tr>`; tb.insertAdjacentHTML('beforeend',tr); });
+            document.getElementById('lowStudentsTable').style.display='table';
+          } else { document.getElementById('lowStudentsPlaceholder').style.display='block'; }
+        }catch(e){ document.getElementById('lowStudentsPlaceholder').style.display='block'; }
+      }
+
+      function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      // Init
+      window.addEventListener('DOMContentLoaded', async ()=>{
+        await loadSummary();
+        loadStudentsByDept();
+        loadAttendanceTrend();
+        loadDeptComparison();
+        loadTopLowStudents();
+      });
+    </script>
+  </body>
+</html>
