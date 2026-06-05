@@ -1,1 +1,1018 @@
 <!-- Mic recording for voice registration (placeholder) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Register Voice</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <style>
+      /* ── Page-scoped styles — identical tokens to register_face.html ── */
+
+      .enroll-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        align-items: start;
+      }
+
+      /* ── Upload zone ─────────────────────────────────────────── */
+
+      .upload-zone {
+        border: 2px dashed #c8d8f0;
+        border-radius: 20px;
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background 0.2s ease;
+        background: #f8faff;
+        position: relative;
+      }
+
+      .upload-zone:hover,
+      .upload-zone.drag-over {
+        border-color: #0f4bb2;
+        background: #eef4ff;
+      }
+
+      .upload-zone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+
+      .upload-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        background: rgba(15, 75, 178, 0.08);
+        display: grid;
+        place-items: center;
+        margin: 0 auto 1.25rem;
+        font-size: 1.75rem;
+      }
+
+      .upload-zone h3 {
+        margin: 0 0 0.4rem;
+        font-size: 1rem;
+        color: #102a43;
+      }
+
+      .upload-zone p {
+        margin: 0;
+        font-size: 0.88rem;
+        color: #52637a;
+      }
+
+      .upload-zone .file-types {
+        display: inline-flex;
+        gap: 0.4rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .file-type-tag {
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(15, 75, 178, 0.08);
+        color: #0f4bb2;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      /* ── Preview panel ───────────────────────────────────────── */
+
+      .preview-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      /* ── Audio preview box ───────────────────────────────────── */
+
+      .audio-preview-box {
+        border-radius: 20px;
+        background: #f1f5fb;
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+        padding: 1.75rem 1.5rem;
+        transition: background 0.2s ease;
+      }
+
+      .audio-preview-box.has-audio {
+        background: #eef4ff;
+      }
+
+      .audio-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        color: #7a90a8;
+        font-size: 0.93rem;
+        font-weight: 500;
+      }
+
+      .audio-placeholder .placeholder-icon {
+        font-size: 2.5rem;
+      }
+
+      /* ── Audio waveform visual ───────────────────────────────── */
+
+      .waveform-visual {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        height: 48px;
+      }
+
+      .waveform-visual.show { display: flex; }
+
+      .wave-bar {
+        width: 4px;
+        border-radius: 2px;
+        background: #0f4bb2;
+        opacity: 0.7;
+        animation: wavePulse 1.2s ease-in-out infinite;
+      }
+
+      .wave-bar:nth-child(1)  { height: 18px; animation-delay: 0.0s; }
+      .wave-bar:nth-child(2)  { height: 30px; animation-delay: 0.1s; }
+      .wave-bar:nth-child(3)  { height: 42px; animation-delay: 0.2s; }
+      .wave-bar:nth-child(4)  { height: 24px; animation-delay: 0.3s; }
+      .wave-bar:nth-child(5)  { height: 36px; animation-delay: 0.4s; }
+      .wave-bar:nth-child(6)  { height: 48px; animation-delay: 0.5s; }
+      .wave-bar:nth-child(7)  { height: 36px; animation-delay: 0.4s; }
+      .wave-bar:nth-child(8)  { height: 24px; animation-delay: 0.3s; }
+      .wave-bar:nth-child(9)  { height: 42px; animation-delay: 0.2s; }
+      .wave-bar:nth-child(10) { height: 30px; animation-delay: 0.1s; }
+      .wave-bar:nth-child(11) { height: 18px; animation-delay: 0.0s; }
+
+      @keyframes wavePulse {
+        0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+        50%       { transform: scaleY(1.0); opacity: 1.0; }
+      }
+
+      /* ── Native audio player ─────────────────────────────────── */
+
+      .audio-player-wrap {
+        display: none;
+        width: 100%;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.65rem;
+      }
+
+      .audio-player-wrap.show { display: flex; }
+
+      .audio-player-wrap audio {
+        width: 100%;
+        border-radius: 12px;
+        outline: none;
+        accent-color: #0f4bb2;
+      }
+
+      .audio-file-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+      }
+
+      .audio-file-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #102a43;
+        text-align: center;
+        word-break: break-all;
+        max-width: 100%;
+      }
+
+      .audio-file-size {
+        font-size: 0.8rem;
+        color: #52637a;
+      }
+
+      /* ── Preview filename under upload zone ──────────────────── */
+
+      .preview-filename {
+        font-size: 0.82rem;
+        color: #52637a;
+        text-align: center;
+        padding: 0 0.5rem;
+        word-break: break-all;
+        display: none;
+        margin-top: 0.5rem;
+      }
+
+      /* ── Enroll button ───────────────────────────────────────── */
+
+      .btn-enroll {
+        width: 100%;
+        min-height: 52px;
+        border: none;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #0f4bb2, #1f75d1);
+        color: #ffffff;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+      }
+
+      .btn-enroll:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 42px rgba(15, 75, 178, 0.22);
+      }
+
+      .btn-enroll:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .btn-enroll.loading {
+        background: #7a90b8;
+        cursor: not-allowed;
+      }
+
+      /* ── Spinner ─────────────────────────────────────────────── */
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .spinner {
+        width: 18px;
+        height: 18px;
+        border: 2.5px solid rgba(255,255,255,0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+        flex-shrink: 0;
+      }
+
+      /* ── Status banner ───────────────────────────────────────── */
+
+      .status-banner {
+        border-radius: 16px;
+        padding: 1rem 1.25rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        display: none;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .status-banner.show { display: flex; }
+
+      .status-banner.success {
+        background: #edfaf3;
+        color: #1a7a4a;
+        border: 1px solid #b2e8cc;
+      }
+
+      .status-banner.error {
+        background: #fff0f2;
+        color: #c21f3c;
+        border: 1px solid #f5bec7;
+      }
+
+      .status-banner.info {
+        background: #eef4ff;
+        color: #0f4bb2;
+        border: 1px solid #b8d0f5;
+      }
+
+      .status-icon {
+        font-size: 1.1rem;
+        flex-shrink: 0;
+        margin-top: 0.05rem;
+      }
+
+      /* ── Guidelines card ─────────────────────────────────────── */
+
+      .guidelines { margin-top: 0.25rem; }
+
+      .guidelines h4 {
+        margin: 0 0 0.85rem;
+        font-size: 0.95rem;
+        color: #334e68;
+      }
+
+      .guideline-list {
+        display: grid;
+        gap: 0.65rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .guideline-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        font-size: 0.9rem;
+        color: #52637a;
+      }
+
+      .guideline-list li::before {
+        content: "✓";
+        width: 22px;
+        height: 22px;
+        border-radius: 8px;
+        background: rgba(15, 75, 178, 0.09);
+        color: #0f4bb2;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        margin-top: 0.05rem;
+      }
+
+      /* ── Enrollment status badge ─────────────────────────────── */
+
+      .enroll-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.85rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .enroll-status-badge.enrolled {
+        background: #edfaf3;
+        color: #1a7a4a;
+      }
+
+      .enroll-status-badge.not-enrolled {
+        background: #fff5e6;
+        color: #a05c00;
+      }
+
+      .badge-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      /* ── Success details panel ───────────────────────────────── */
+
+      .success-details {
+        background: #edfaf3;
+        border: 1px solid #b2e8cc;
+        border-radius: 16px;
+        padding: 1.25rem;
+        display: none;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .success-details.show { display: flex; }
+
+      .success-details h4 {
+        margin: 0;
+        color: #1a7a4a;
+        font-size: 0.95rem;
+      }
+
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.88rem;
+        color: #2d6a4a;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(26, 122, 74, 0.12);
+      }
+
+      .detail-row:last-child { border-bottom: none; }
+      .detail-row strong { color: #1a7a4a; }
+
+      /* ── Responsive ──────────────────────────────────────────── */
+
+      @media (max-width: 900px) {
+        .enroll-layout { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+
+      <!-- ── Sidebar ──────────────────────────────────────────── -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Student</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="attendance_history.html">
+            <span class="nav-icon">📜</span>
+            <span>Attendance History</span>
+          </a>
+          <a href="register_face.html">
+            <span class="nav-icon">📷</span>
+            <span>Register Face</span>
+          </a>
+          <a href="register_voice.html" class="active">
+            <span class="nav-icon">🎙️</span>
+            <span>Register Voice</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects Enrolled</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color:rgba(255,255,255,0.72);font-size:0.95rem;line-height:1.5;">
+            Student portal<br />
+            Track attendance and register biometric access.
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── Topbar ────────────────────────────────────────────── -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Voice Registration</h1>
+            <p>Upload your voice recording to enroll for AI-powered attendance</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong id="topbarName">Student</strong>
+                <small id="topbarRole">Student</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="dashboard.html">Dashboard</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ── Main content ──────────────────────────────────────── -->
+      <main class="dashboard-content">
+
+        <!-- Page heading -->
+        <section class="page-heading">
+          <div>
+            <h2>
+              Register your voice
+              <span class="enroll-status-badge not-enrolled" id="enrollBadge">
+                <span class="badge-dot"></span>
+                <span id="enrollBadgeText">Not enrolled</span>
+              </span>
+            </h2>
+            <p>
+              Your audio is processed on the server using SpeechBrain ECAPA-TDNN.
+              A 192-dimensional speaker embedding is stored — not the raw audio.
+            </p>
+          </div>
+        </section>
+
+        <!-- Status banner -->
+        <div class="status-banner" id="statusBanner" role="alert">
+          <span class="status-icon" id="statusIcon"></span>
+          <span id="statusText"></span>
+        </div>
+
+        <!-- Enroll layout -->
+        <div class="enroll-layout" style="margin-top:1.5rem;">
+
+          <!-- Left col: upload zone + guidelines -->
+          <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+            <!-- Upload zone card -->
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="padding:1.25rem 1.5rem;border-bottom:1px solid rgba(16,42,67,0.07);">
+                <h3 style="margin:0;font-size:1rem;">Upload audio</h3>
+                <p style="margin:0.25rem 0 0;color:#52637a;font-size:0.88rem;">
+                  Select or drag a voice recording — WAV recommended
+                </p>
+              </div>
+              <div style="padding:1.5rem;">
+                <label class="upload-zone" id="uploadZone" for="audioInput">
+                  <input
+                    type="file"
+                    id="audioInput"
+                    accept="audio/wav,audio/wave,audio/x-wav,audio/mpeg,audio/mp3,audio/ogg,audio/flac,audio/x-flac,audio/webm"
+                  />
+                  <div class="upload-icon">🎙️</div>
+                  <h3 id="uploadTitle">Click or drag to upload</h3>
+                  <p id="uploadSubtitle">Read at least 5–10 seconds of clear speech</p>
+                  <div class="file-types">
+                    <span class="file-type-tag">WAV</span>
+                    <span class="file-type-tag">MP3</span>
+                    <span class="file-type-tag">OGG</span>
+                    <span class="file-type-tag">FLAC</span>
+                    <span class="file-type-tag">Max 25 MB</span>
+                  </div>
+                </label>
+                <p class="preview-filename" id="previewFilename"></p>
+              </div>
+            </div>
+
+            <!-- Recording guidelines -->
+            <div class="card guidelines">
+              <h4>🎤 Recording guidelines</h4>
+              <ul class="guideline-list">
+                <li>Record at least 5–10 seconds of natural speech</li>
+                <li>Speak clearly and at a normal conversational pace</li>
+                <li>Record in a quiet room with minimal background noise</li>
+                <li>Hold the microphone 10–15 cm from your mouth</li>
+                <li>Read a sentence aloud — avoid humming or silence</li>
+                <li>WAV format gives the best recognition accuracy</li>
+              </ul>
+            </div>
+
+          </div>
+
+          <!-- Right col: audio preview + enroll + result -->
+          <div class="preview-panel">
+
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="padding:1.25rem 1.5rem;border-bottom:1px solid rgba(16,42,67,0.07);">
+                <h3 style="margin:0;font-size:1rem;">Audio preview</h3>
+                <p style="margin:0.25rem 0 0;color:#52637a;font-size:0.88rem;">
+                  Listen back before enrolling
+                </p>
+              </div>
+              <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;">
+
+                <!-- Audio preview box -->
+                <div class="audio-preview-box" id="audioPreviewBox">
+
+                  <!-- Placeholder shown when no file selected -->
+                  <div class="audio-placeholder" id="audioPlaceholder">
+                    <span class="placeholder-icon">🔇</span>
+                    <span>No audio selected</span>
+                  </div>
+
+                  <!-- Waveform bars shown when file is loaded -->
+                  <div class="waveform-visual" id="waveformVisual">
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                  </div>
+
+                  <!-- Native audio player + file metadata -->
+                  <div class="audio-player-wrap" id="audioPlayerWrap">
+                    <audio id="audioPlayer" controls></audio>
+                    <div class="audio-file-meta">
+                      <span class="audio-file-name" id="audioFileName"></span>
+                      <span class="audio-file-size" id="audioFileSize"></span>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Enroll button -->
+                <button
+                  type="button"
+                  class="btn-enroll"
+                  id="enrollBtn"
+                  disabled
+                >
+                  <span id="enrollBtnIcon">🎙️</span>
+                  <span id="enrollBtnText">Select an audio file first</span>
+                </button>
+
+              </div>
+            </div>
+
+            <!-- Success details panel -->
+            <div class="success-details" id="successDetails">
+              <h4>✅ Enrollment successful</h4>
+              <div class="detail-row">
+                <span>Student</span>
+                <strong id="detailName">—</strong>
+              </div>
+              <div class="detail-row">
+                <span>Student ID</span>
+                <strong id="detailStudentId">—</strong>
+              </div>
+              <div class="detail-row">
+                <span>Embedding size</span>
+                <strong id="detailEmbeddingSize">—</strong>
+              </div>
+              <div class="detail-row">
+                <span>Model</span>
+                <strong>SpeechBrain ECAPA-TDNN</strong>
+              </div>
+              <div class="detail-row">
+                <span>Status</span>
+                <strong>Voice enrolled</strong>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- ── Scripts ─────────────────────────────────────────────── -->
+    <script src="../assets/js/api.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+    <script>
+      // ============================================================
+      //  register_voice — inline script
+      //  Matches register_face.html architecture exactly.
+      //  Calls POST /biometric/enroll-voice (multipart/form-data).
+      //  Fields: student_id (Form UUID) + audio (UploadFile).
+      // ============================================================
+
+      (function () {
+        "use strict";
+
+        // ── Constants ─────────────────────────────────────────────
+        const API_ENROLL_VOICE = "/biometric/enroll-voice";
+        const MAX_FILE_BYTES   = 25 * 1024 * 1024;   // 25 MB — matches backend
+
+        const ALLOWED_MIME = new Set([
+          "audio/wav", "audio/wave", "audio/x-wav",
+          "audio/mpeg", "audio/mp3",
+          "audio/ogg",
+          "audio/flac", "audio/x-flac",
+          "audio/webm",
+        ]);
+
+        // ── DOM refs ──────────────────────────────────────────────
+        const uploadZone       = document.getElementById("uploadZone");
+        const audioInput       = document.getElementById("audioInput");
+        const uploadTitle      = document.getElementById("uploadTitle");
+        const uploadSubtitle   = document.getElementById("uploadSubtitle");
+        const previewFilename  = document.getElementById("previewFilename");
+
+        const audioPreviewBox  = document.getElementById("audioPreviewBox");
+        const audioPlaceholder = document.getElementById("audioPlaceholder");
+        const waveformVisual   = document.getElementById("waveformVisual");
+        const audioPlayerWrap  = document.getElementById("audioPlayerWrap");
+        const audioPlayer      = document.getElementById("audioPlayer");
+        const audioFileName    = document.getElementById("audioFileName");
+        const audioFileSize    = document.getElementById("audioFileSize");
+
+        const enrollBtn        = document.getElementById("enrollBtn");
+        const enrollBtnText    = document.getElementById("enrollBtnText");
+        const enrollBtnIcon    = document.getElementById("enrollBtnIcon");
+
+        const statusBanner     = document.getElementById("statusBanner");
+        const statusIcon       = document.getElementById("statusIcon");
+        const statusText       = document.getElementById("statusText");
+
+        const enrollBadge      = document.getElementById("enrollBadge");
+        const enrollBadgeText  = document.getElementById("enrollBadgeText");
+
+        const successDetails       = document.getElementById("successDetails");
+        const detailName           = document.getElementById("detailName");
+        const detailStudentId      = document.getElementById("detailStudentId");
+        const detailEmbeddingSize  = document.getElementById("detailEmbeddingSize");
+
+        const topbarName           = document.getElementById("topbarName");
+        const topbarRole           = document.getElementById("topbarRole");
+
+        // ── State ─────────────────────────────────────────────────
+        let selectedFile = null;
+        let isSubmitting = false;
+        let currentUser  = null;
+        let objectUrl    = null;   // revoked after use to avoid memory leaks
+
+        // ── Init ──────────────────────────────────────────────────
+        function init() {
+          currentUser = readStoredUser();
+
+          if (!currentUser) {
+            window.location.href = "../auth/login.html";
+            return;
+          }
+
+          if (currentUser.role !== "student") {
+            showBanner("error", "⚠️", "This page is only accessible to students.");
+            enrollBtn.disabled = true;
+            return;
+          }
+
+          topbarName.textContent = currentUser.full_name || "Student";
+          topbarRole.textContent = "Student";
+
+          if (currentUser.voice_enrolled) {
+            setEnrollBadge(true);
+          }
+
+          bindEvents();
+        }
+
+        // ── localStorage helpers ──────────────────────────────────
+        function readStoredUser() {
+          try {
+            const raw = localStorage.getItem("attendiq_user");
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            return null;
+          }
+        }
+
+        // ── Enrollment badge ──────────────────────────────────────
+        function setEnrollBadge(enrolled) {
+          if (enrolled) {
+            enrollBadge.className = "enroll-status-badge enrolled";
+            enrollBadgeText.textContent = "Voice enrolled";
+          } else {
+            enrollBadge.className = "enroll-status-badge not-enrolled";
+            enrollBadgeText.textContent = "Not enrolled";
+          }
+        }
+
+        // ── Status banner ─────────────────────────────────────────
+        function showBanner(type, icon, message) {
+          statusBanner.className = `status-banner show ${type}`;
+          statusIcon.textContent = icon;
+          statusText.textContent = message;
+        }
+
+        function hideBanner() {
+          statusBanner.className = "status-banner";
+        }
+
+        // ── Audio preview ─────────────────────────────────────────
+        function renderAudioPreview(file) {
+          // Revoke previous object URL to avoid memory leak
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+          }
+          objectUrl = URL.createObjectURL(file);
+
+          // Wire up native audio player
+          audioPlayer.src = objectUrl;
+          audioFileName.textContent = file.name;
+          audioFileSize.textContent = formatBytes(file.size);
+
+          // Show waveform bars + player, hide placeholder
+          audioPlaceholder.style.display = "none";
+          waveformVisual.classList.add("show");
+          audioPlayerWrap.classList.add("show");
+          audioPreviewBox.classList.add("has-audio");
+
+          // Update upload zone label
+          previewFilename.textContent = `Selected: ${file.name} (${formatBytes(file.size)})`;
+          previewFilename.style.display = "block";
+          uploadTitle.textContent = file.name;
+          uploadSubtitle.textContent = `${formatBytes(file.size)} · Click to change`;
+        }
+
+        function clearAudioPreview() {
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+          }
+          audioPlayer.src = "";
+          audioPlaceholder.style.display = "flex";
+          waveformVisual.classList.remove("show");
+          audioPlayerWrap.classList.remove("show");
+          audioPreviewBox.classList.remove("has-audio");
+          previewFilename.style.display = "none";
+          uploadTitle.textContent = "Click or drag to upload";
+          uploadSubtitle.textContent = "Read at least 5–10 seconds of clear speech";
+        }
+
+        // ── File validation ───────────────────────────────────────
+        function validateFile(file) {
+          // Some browsers report "" for unknown MIME — fall back to extension check
+          const mime = file.type || "";
+          const ext  = file.name.split(".").pop().toLowerCase();
+          const validExts = ["wav", "mp3", "ogg", "flac", "webm"];
+
+          if (mime && !ALLOWED_MIME.has(mime)) {
+            return `Unsupported file type "${mime}". Please upload WAV, MP3, OGG, or FLAC.`;
+          }
+          if (!mime && !validExts.includes(ext)) {
+            return `Unsupported file extension ".${ext}". Accepted: ${validExts.join(", ")}.`;
+          }
+          if (file.size === 0) {
+            return "The selected file is empty.";
+          }
+          if (file.size > MAX_FILE_BYTES) {
+            return `File too large (${formatBytes(file.size)}). Maximum is 25 MB.`;
+          }
+          return null;   // valid
+        }
+
+        // ── File selection handler ────────────────────────────────
+        function handleFileSelect(file) {
+          hideBanner();
+          successDetails.classList.remove("show");
+
+          const error = validateFile(file);
+          if (error) {
+            showBanner("error", "❌", error);
+            selectedFile = null;
+            clearAudioPreview();
+            enrollBtn.disabled = true;
+            enrollBtnText.textContent = "Select a valid audio file";
+            enrollBtnIcon.textContent = "🎙️";
+            return;
+          }
+
+          selectedFile = file;
+          renderAudioPreview(file);
+          enrollBtn.disabled = false;
+          enrollBtnText.textContent = "Enroll Voice";
+          enrollBtnIcon.textContent = "🎙️";
+        }
+
+        // ── Button loading state ──────────────────────────────────
+        function setButtonLoading(loading) {
+          isSubmitting = loading;
+          enrollBtn.disabled = loading;
+
+          if (loading) {
+            enrollBtn.classList.add("loading");
+            enrollBtnText.textContent = "Enrolling…";
+            const icon = document.getElementById("enrollBtnIcon");
+            if (icon) {
+              const spinner = document.createElement("span");
+              spinner.className = "spinner";
+              spinner.id = "enrollBtnIcon";
+              icon.replaceWith(spinner);
+            }
+          } else {
+            enrollBtn.classList.remove("loading");
+            enrollBtnText.textContent = "Enroll Voice";
+            const spinner = document.querySelector(".spinner");
+            if (spinner) {
+              const icon = document.createElement("span");
+              icon.id = "enrollBtnIcon";
+              icon.textContent = "🎙️";
+              spinner.replaceWith(icon);
+            }
+          }
+        }
+
+        // ── Main API call ─────────────────────────────────────────
+        async function enrollVoice() {
+          if (isSubmitting || !selectedFile || !currentUser) return;
+
+          const token = localStorage.getItem("attendiq_token");
+          if (!token) {
+            showBanner("error", "🔒", "Session expired. Please log in again.");
+            setTimeout(() => { window.location.href = "../auth/login.html"; }, 1800);
+            return;
+          }
+
+          hideBanner();
+          successDetails.classList.remove("show");
+          setButtonLoading(true);
+          showBanner("info", "⏳", "Uploading audio and generating voice embedding — this may take a few seconds…");
+
+          try {
+            const formData = new FormData();
+            formData.append("student_id", currentUser.id);
+            // Field name must be "audio" — matches backend UploadFile parameter
+            formData.append("audio", selectedFile, selectedFile.name);
+
+            const response = await fetch(`${API_BASE_URL}${API_ENROLL_VOICE}`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                // Content-Type intentionally omitted — browser adds multipart boundary
+              },
+              body: formData,
+            });
+
+            const payload = await response.json().catch(() => null);
+
+            if (!response.ok) {
+              const message =
+                payload?.detail ||
+                payload?.message ||
+                `Server error (${response.status}).`;
+              throw new Error(message);
+            }
+
+            // ── Success path ──────────────────────────────────────
+            hideBanner();
+            showBanner(
+              "success",
+              "✅",
+              payload.message || "Voice enrolled successfully."
+            );
+
+            // Populate success detail panel
+            detailName.textContent          = currentUser.full_name || "—";
+            detailStudentId.textContent     = truncateId(currentUser.id);
+            detailEmbeddingSize.textContent = `${payload.embedding_size ?? 192} dimensions`;
+            successDetails.classList.add("show");
+
+            // Update badge
+            setEnrollBadge(true);
+
+            // Persist voice_enrolled = true into localStorage
+            const updatedUser = { ...currentUser, voice_enrolled: true };
+            localStorage.setItem("attendiq_user", JSON.stringify(updatedUser));
+            currentUser = updatedUser;
+
+          } catch (err) {
+            const msg = err.message || "Enrollment failed. Please try again.";
+            showBanner("error", "❌", msg);
+          } finally {
+            setButtonLoading(false);
+          }
+        }
+
+        // ── Drag-and-drop ─────────────────────────────────────────
+        function bindDragDrop() {
+          uploadZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            uploadZone.classList.add("drag-over");
+          });
+          uploadZone.addEventListener("dragleave", () => {
+            uploadZone.classList.remove("drag-over");
+          });
+          uploadZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove("drag-over");
+            const file = e.dataTransfer?.files?.[0];
+            if (file) handleFileSelect(file);
+          });
+        }
+
+        // ── Event bindings ────────────────────────────────────────
+        function bindEvents() {
+          audioInput.addEventListener("change", () => {
+            const file = audioInput.files?.[0];
+            if (file) handleFileSelect(file);
+          });
+
+          enrollBtn.addEventListener("click", () => {
+            if (!isSubmitting) enrollVoice();
+          });
+
+          bindDragDrop();
+        }
+
+        // ── Utilities ─────────────────────────────────────────────
+        function formatBytes(bytes) {
+          if (bytes < 1024)            return `${bytes} B`;
+          if (bytes < 1024 * 1024)     return `${(bytes / 1024).toFixed(1)} KB`;
+          return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function truncateId(id) {
+          if (!id) return "—";
+          return id.length > 16 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
+        }
+
+        // ── Boot ──────────────────────────────────────────────────
+        document.addEventListener("DOMContentLoaded", init);
+
+      })();
+    </script>
+  </body>
+</html>

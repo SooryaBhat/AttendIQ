@@ -1,1 +1,1432 @@
 <!-- Upload image or audio for AI scan (placeholder) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Take Attendance</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/attendance.css" />
+    <style>
+      /* ── Tab navigation ──────────────────────────────────────── */
+      .tab-nav {
+        display: flex;
+        gap: 0.25rem;
+        background: #f1f5fb;
+        border-radius: 16px;
+        padding: 0.35rem;
+        width: fit-content;
+        margin-bottom: 1.75rem;
+      }
+
+      .tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.65rem 1.35rem;
+        border: none;
+        border-radius: 12px;
+        background: transparent;
+        color: #52637a;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+        white-space: nowrap;
+      }
+
+      .tab-btn.active {
+        background: #ffffff;
+        color: #0f4bb2;
+        box-shadow: 0 4px 14px rgba(15, 75, 178, 0.1);
+      }
+
+      .tab-btn:hover:not(.active) {
+        background: rgba(15, 75, 178, 0.06);
+        color: #0f4bb2;
+      }
+
+      .tab-panel { display: none; }
+      .tab-panel.active { display: block; }
+
+      /* ── Session selector card ───────────────────────────────── */
+      .session-selector {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1rem;
+        align-items: end;
+        margin-bottom: 1.75rem;
+      }
+
+      .session-selector select {
+        width: 100%;
+        border: 1px solid #d9e2ef;
+        border-radius: 16px;
+        padding: 0.95rem 1rem;
+        background: #f7f9fe;
+        color: #102a43;
+        font: inherit;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .session-selector select:focus {
+        outline: none;
+        border-color: #0f4bb2;
+        box-shadow: 0 0 0 4px rgba(15, 75, 178, 0.08);
+      }
+
+      .session-selector label {
+        font-size: 0.93rem;
+        font-weight: 600;
+        color: #334e68;
+        display: block;
+        margin-bottom: 0.45rem;
+      }
+
+      /* ── Upload zone — same DNA as register_face/voice ───────── */
+      .upload-zone {
+        border: 2px dashed #c8d8f0;
+        border-radius: 20px;
+        padding: 2.25rem 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background 0.2s ease;
+        background: #f8faff;
+        position: relative;
+        display: block;
+      }
+
+      .upload-zone:hover,
+      .upload-zone.drag-over {
+        border-color: #0f4bb2;
+        background: #eef4ff;
+      }
+
+      .upload-zone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+
+      .upload-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 18px;
+        background: rgba(15, 75, 178, 0.08);
+        display: grid;
+        place-items: center;
+        margin: 0 auto 1rem;
+        font-size: 1.65rem;
+      }
+
+      .upload-zone h3 {
+        margin: 0 0 0.35rem;
+        font-size: 1rem;
+        color: #102a43;
+      }
+
+      .upload-zone p {
+        margin: 0;
+        font-size: 0.87rem;
+        color: #52637a;
+      }
+
+      .file-tags {
+        display: inline-flex;
+        gap: 0.35rem;
+        margin-top: 0.9rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .file-tag {
+        padding: 0.22rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(15, 75, 178, 0.08);
+        color: #0f4bb2;
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      .selected-file-label {
+        font-size: 0.82rem;
+        color: #52637a;
+        text-align: center;
+        margin-top: 0.5rem;
+        word-break: break-all;
+        display: none;
+      }
+
+      /* ── Checkin layout ──────────────────────────────────────── */
+      .checkin-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        align-items: start;
+      }
+
+      /* ── Submit button ───────────────────────────────────────── */
+      .btn-submit {
+        width: 100%;
+        min-height: 52px;
+        border: none;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #0f4bb2, #1f75d1);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-top: 1.25rem;
+      }
+
+      .btn-submit:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 42px rgba(15, 75, 178, 0.22);
+      }
+
+      .btn-submit:disabled {
+        opacity: 0.52;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .btn-submit.loading { background: #7a90b8; cursor: not-allowed; }
+
+      /* ── Spinner ─────────────────────────────────────────────── */
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      .spinner {
+        width: 18px;
+        height: 18px;
+        border: 2.5px solid rgba(255,255,255,0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+        flex-shrink: 0;
+      }
+
+      /* ── Status banners ──────────────────────────────────────── */
+      .status-banner {
+        border-radius: 16px;
+        padding: 1rem 1.25rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        display: none;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .status-banner.show { display: flex; }
+
+      .status-banner.success {
+        background: #edfaf3;
+        color: #1a7a4a;
+        border: 1px solid #b2e8cc;
+      }
+
+      .status-banner.error {
+        background: #fff0f2;
+        color: #c21f3c;
+        border: 1px solid #f5bec7;
+      }
+
+      .status-banner.info {
+        background: #eef4ff;
+        color: #0f4bb2;
+        border: 1px solid #b8d0f5;
+      }
+
+      .status-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem; }
+
+      /* ── Summary stat cards ──────────────────────────────────── */
+      .summary-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .summary-stat {
+        background: #f7f9fe;
+        border: 1px solid #d9e2ef;
+        border-radius: 18px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+
+      .summary-stat .stat-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #52637a;
+      }
+
+      .summary-stat .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .summary-stat.present-stat .stat-number { color: #14a44d; }
+      .summary-stat.absent-stat  .stat-number { color: #c21f3c; }
+
+      /* ── Result tables ───────────────────────────────────────── */
+      .result-section { margin-top: 1.5rem; }
+
+      .result-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 0.85rem;
+      }
+
+      .result-section-header h4 { margin: 0; font-size: 1rem; color: #102a43; }
+
+      .result-count-badge {
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .result-count-badge.present {
+        background: rgba(20, 164, 77, 0.12);
+        color: #14a44d;
+      }
+
+      .result-count-badge.absent {
+        background: rgba(194, 31, 60, 0.1);
+        color: #c21f3c;
+      }
+
+      .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.93rem;
+      }
+
+      .result-table th {
+        text-align: left;
+        padding: 0.85rem 1rem;
+        background: #f7f9fe;
+        color: #52637a;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(16, 42, 67, 0.08);
+      }
+
+      .result-table td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid rgba(16, 42, 67, 0.06);
+        color: #102a43;
+      }
+
+      .result-table tbody tr:last-child td { border-bottom: none; }
+
+      .result-table tbody tr:hover { background: rgba(15, 75, 178, 0.03); }
+
+      .confidence-bar-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+
+      .confidence-bar {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: #e2e8f0;
+        overflow: hidden;
+        max-width: 80px;
+      }
+
+      .confidence-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #14a44d, #27c23a);
+        transition: width 0.5s ease;
+      }
+
+      .confidence-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #14a44d;
+        min-width: 38px;
+      }
+
+      /* ── Voice result card ───────────────────────────────────── */
+      .voice-result-card {
+        background: #edfaf3;
+        border: 1px solid #b2e8cc;
+        border-radius: 20px;
+        padding: 1.5rem;
+        display: none;
+        flex-direction: column;
+        gap: 0.6rem;
+        margin-top: 1.5rem;
+      }
+
+      .voice-result-card.show { display: flex; }
+
+      .voice-result-card h4 {
+        margin: 0 0 0.5rem;
+        font-size: 1rem;
+        color: #1a7a4a;
+      }
+
+      .vr-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #2d6a4a;
+        padding: 0.3rem 0;
+        border-bottom: 1px solid rgba(26,122,74,0.1);
+      }
+
+      .vr-row:last-child { border-bottom: none; }
+      .vr-row strong { color: #1a7a4a; font-weight: 700; }
+
+      /* ── Image preview thumbnail ─────────────────────────────── */
+      .image-preview-thumb {
+        width: 100%;
+        border-radius: 16px;
+        aspect-ratio: 16/9;
+        object-fit: cover;
+        background: #f1f5fb;
+        display: none;
+        margin-top: 0.75rem;
+      }
+
+      /* ── Audio player preview ────────────────────────────────── */
+      .audio-preview-wrap {
+        display: none;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+      }
+
+      .audio-preview-wrap audio {
+        width: 100%;
+        border-radius: 12px;
+        accent-color: #0f4bb2;
+      }
+
+      /* ── Empty/loading states in tables ─────────────────────── */
+      .table-state-row td {
+        text-align: center;
+        padding: 2rem;
+        color: #7a90a8;
+        font-size: 0.93rem;
+      }
+
+      /* ── Responsive ──────────────────────────────────────────── */
+      @media (max-width: 900px) {
+        .checkin-layout { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 600px) {
+        .tab-nav { width: 100%; }
+        .tab-btn { flex: 1; justify-content: center; }
+        .session-selector { grid-template-columns: 1fr; }
+        .summary-stats { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+
+      <!-- ── Sidebar ──────────────────────────────────────────── -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Faculty</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="sessions.html">
+            <span class="nav-icon">🗓️</span>
+            <span>Sessions</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="take_attendance.html" class="active">
+            <span class="nav-icon">📡</span>
+            <span>Take Attendance</span>
+          </a>
+          <a href="attendance_report.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color:rgba(255,255,255,0.72);font-size:0.95rem;line-height:1.5;">
+            Teaching dashboard<br />
+            Manage classes, attendance, and reports.
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── Topbar ────────────────────────────────────────────── -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Take Attendance</h1>
+            <p>Run AI-powered face or voice attendance for your class session</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong id="topbarName">Faculty</strong>
+                <small id="topbarRole">Instructor</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="dashboard.html">Dashboard</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ── Main content ──────────────────────────────────────── -->
+      <main class="dashboard-content">
+
+        <!-- Page heading -->
+        <section class="page-heading">
+          <div>
+            <h2>AI Attendance Check-in</h2>
+            <p>Select a session, upload classroom media, and let the AI identify students.</p>
+          </div>
+        </section>
+
+        <!-- Global status banner -->
+        <div class="status-banner" id="globalBanner" role="alert">
+          <span class="status-icon" id="globalBannerIcon"></span>
+          <span id="globalBannerText"></span>
+        </div>
+
+        <!-- Tab navigation -->
+        <div class="tab-nav" role="tablist" aria-label="Attendance method">
+          <button
+            class="tab-btn active"
+            id="tabFaceBtn"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tabFace"
+            data-tab="face"
+          >
+            📷 Group Face Attendance
+          </button>
+          <button
+            class="tab-btn"
+            id="tabVoiceBtn"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tabVoice"
+            data-tab="voice"
+          >
+            🎙️ Voice Attendance
+          </button>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             TAB 1 — GROUP FACE ATTENDANCE
+             ════════════════════════════════════════════════════════ -->
+        <div class="tab-panel active" id="tabFace" role="tabpanel" aria-labelledby="tabFaceBtn">
+
+          <div class="session-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Group Face Check-in</h2>
+                <p>Upload a classroom photo. The AI detects all enrolled student faces and marks attendance.</p>
+              </div>
+            </div>
+
+            <!-- Status banner for this tab -->
+            <div class="status-banner" id="faceBanner" role="alert">
+              <span class="status-icon" id="faceBannerIcon"></span>
+              <span id="faceBannerText"></span>
+            </div>
+
+            <!-- Session dropdown -->
+            <div class="session-selector">
+              <div>
+                <label for="faceSessionSelect">Select Session</label>
+                <select id="faceSessionSelect">
+                  <option value="">— Loading sessions… —</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Upload + preview layout -->
+            <div class="checkin-layout">
+
+              <!-- Left: upload zone -->
+              <div>
+                <label class="upload-zone" id="faceUploadZone" for="faceImageInput">
+                  <input
+                    type="file"
+                    id="faceImageInput"
+                    accept="image/jpeg,image/jpg,image/png,image/bmp,image/webp"
+                  />
+                  <div class="upload-icon">📷</div>
+                  <h3 id="faceUploadTitle">Click or drag classroom photo</h3>
+                  <p id="faceUploadSubtitle">Full classroom image with all students visible</p>
+                  <div class="file-tags">
+                    <span class="file-tag">JPEG</span>
+                    <span class="file-tag">PNG</span>
+                    <span class="file-tag">BMP</span>
+                    <span class="file-tag">WEBP</span>
+                    <span class="file-tag">Max 10 MB</span>
+                  </div>
+                </label>
+                <p class="selected-file-label" id="faceFileLabel"></p>
+
+                <button
+                  type="button"
+                  class="btn-submit"
+                  id="faceSubmitBtn"
+                  disabled
+                >
+                  <span id="faceSubmitIcon">📡</span>
+                  <span id="faceSubmitText">Select session &amp; image</span>
+                </button>
+              </div>
+
+              <!-- Right: image preview -->
+              <div>
+                <div class="session-panel" style="padding:1.25rem;">
+                  <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#334e68;">Image preview</h3>
+                  <div
+                    id="facePreviewPlaceholder"
+                    style="border-radius:16px;background:#f1f5fb;aspect-ratio:16/9;display:grid;place-items:center;color:#7a90a8;font-size:0.9rem;font-weight:500;gap:0.5rem;flex-direction:column;"
+                  >
+                    <span style="font-size:2rem;">🖼️</span>
+                    <span>No image selected</span>
+                  </div>
+                  <img
+                    id="facePreviewImg"
+                    class="image-preview-thumb"
+                    alt="Classroom photo preview"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results panel — hidden until API responds -->
+          <div class="session-panel" id="faceResultPanel" style="display:none;margin-top:0;">
+
+            <div class="panel-header">
+              <div>
+                <h2>Check-in Results</h2>
+                <p>AI face recognition complete. Review attendance below.</p>
+              </div>
+            </div>
+
+            <!-- Summary stats -->
+            <div class="summary-stats">
+              <div class="summary-stat present-stat">
+                <span class="stat-label">✅ Students Present</span>
+                <span class="stat-number" id="facePresentCount">0</span>
+              </div>
+              <div class="summary-stat absent-stat">
+                <span class="stat-label">❌ Students Absent</span>
+                <span class="stat-number" id="faceAbsentCount">0</span>
+              </div>
+            </div>
+
+            <!-- Present students table -->
+            <div class="result-section">
+              <div class="result-section-header">
+                <h4>Present students</h4>
+                <span class="result-count-badge present" id="facePresentBadge">0</span>
+              </div>
+              <div class="table-wrapper">
+                <table class="result-table">
+                  <thead>
+                    <tr>
+                      <th>Student ID</th>
+                      <th>Name</th>
+                      <th>Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody id="facePresentTbody">
+                    <tr class="table-state-row">
+                      <td colspan="3">No data yet</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Absent students table -->
+            <div class="result-section" style="margin-top:1.75rem;">
+              <div class="result-section-header">
+                <h4>Absent students</h4>
+                <span class="result-count-badge absent" id="faceAbsentBadge">0</span>
+              </div>
+              <div class="table-wrapper">
+                <table class="result-table">
+                  <thead>
+                    <tr>
+                      <th>Student ID</th>
+                      <th>Name</th>
+                    </tr>
+                  </thead>
+                  <tbody id="faceAbsentTbody">
+                    <tr class="table-state-row">
+                      <td colspan="2">No data yet</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════
+             TAB 2 — VOICE ATTENDANCE
+             ════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tabVoice" role="tabpanel" aria-labelledby="tabVoiceBtn">
+
+          <div class="session-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Voice Check-in</h2>
+                <p>Upload a student's voice recording. The AI matches the speaker against enrolled voice embeddings.</p>
+              </div>
+            </div>
+
+            <!-- Status banner for this tab -->
+            <div class="status-banner" id="voiceBanner" role="alert">
+              <span class="status-icon" id="voiceBannerIcon"></span>
+              <span id="voiceBannerText"></span>
+            </div>
+
+            <!-- Session dropdown -->
+            <div class="session-selector">
+              <div>
+                <label for="voiceSessionSelect">Select Session</label>
+                <select id="voiceSessionSelect">
+                  <option value="">— Loading sessions… —</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Upload + audio preview layout -->
+            <div class="checkin-layout">
+
+              <!-- Left: upload zone -->
+              <div>
+                <label class="upload-zone" id="voiceUploadZone" for="voiceAudioInput">
+                  <input
+                    type="file"
+                    id="voiceAudioInput"
+                    accept="audio/wav,audio/wave,audio/x-wav,audio/mpeg,audio/mp3,audio/ogg,audio/flac,audio/x-flac,audio/webm"
+                  />
+                  <div class="upload-icon">🎙️</div>
+                  <h3 id="voiceUploadTitle">Click or drag audio file</h3>
+                  <p id="voiceUploadSubtitle">Student voice recording for identification</p>
+                  <div class="file-tags">
+                    <span class="file-tag">WAV</span>
+                    <span class="file-tag">MP3</span>
+                    <span class="file-tag">OGG</span>
+                    <span class="file-tag">FLAC</span>
+                    <span class="file-tag">Max 25 MB</span>
+                  </div>
+                </label>
+                <p class="selected-file-label" id="voiceFileLabel"></p>
+
+                <button
+                  type="button"
+                  class="btn-submit"
+                  id="voiceSubmitBtn"
+                  disabled
+                >
+                  <span id="voiceSubmitIcon">🎙️</span>
+                  <span id="voiceSubmitText">Select session &amp; audio</span>
+                </button>
+              </div>
+
+              <!-- Right: audio player preview -->
+              <div>
+                <div class="session-panel" style="padding:1.25rem;">
+                  <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#334e68;">Audio preview</h3>
+                  <div
+                    id="voicePreviewPlaceholder"
+                    style="border-radius:16px;background:#f1f5fb;min-height:100px;display:grid;place-items:center;color:#7a90a8;font-size:0.9rem;font-weight:500;"
+                  >
+                    <span>🔇 No audio selected</span>
+                  </div>
+                  <div class="audio-preview-wrap" id="voiceAudioPreviewWrap">
+                    <audio id="voiceAudioPlayer" controls></audio>
+                    <p id="voiceAudioMeta" style="margin:0;font-size:0.82rem;color:#52637a;text-align:center;"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Voice result card — hidden until API responds -->
+          <div class="session-panel" id="voiceResultPanel" style="display:none;margin-top:0;">
+            <div class="panel-header">
+              <div>
+                <h2>Voice Check-in Result</h2>
+                <p>Speaker identification complete.</p>
+              </div>
+            </div>
+
+            <div class="voice-result-card show" id="voiceResultCard">
+              <h4>✅ Attendance marked</h4>
+              <div class="vr-row">
+                <span>Attendance marked</span>
+                <strong id="vrMarked">—</strong>
+              </div>
+              <div class="vr-row">
+                <span>Student ID</span>
+                <strong id="vrStudentId">—</strong>
+              </div>
+              <div class="vr-row">
+                <span>Confidence</span>
+                <strong id="vrConfidence">—</strong>
+              </div>
+              <div class="vr-row">
+                <span>Session ID</span>
+                <strong id="vrSessionId">—</strong>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+
+    <!-- ── Scripts ─────────────────────────────────────────────── -->
+    <script src="../assets/js/api.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+    <script>
+      // ============================================================
+      //  take_attendance.js — inline script
+      //  POST /attendance/group-face-checkin  — multipart: session_id + image
+      //  POST /attendance/voice-checkin       — multipart: session_id + audio
+      // ============================================================
+
+      (function () {
+        "use strict";
+
+        // ── API endpoints ─────────────────────────────────────────
+        const API_SESSIONS     = "/attendance/sessions";
+        const API_FACE_CHECKIN = "/attendance/group-face-checkin";
+        const API_VOICE_CHECKIN= "/attendance/voice-checkin";
+
+        // ── File size limits ──────────────────────────────────────
+        const MAX_IMAGE_BYTES = 10 * 1024 * 1024;   // 10 MB
+        const MAX_AUDIO_BYTES = 25 * 1024 * 1024;   // 25 MB
+
+        const ALLOWED_IMAGE_MIME = new Set([
+          "image/jpeg","image/jpg","image/png","image/bmp","image/webp",
+        ]);
+        const ALLOWED_AUDIO_MIME = new Set([
+          "audio/wav","audio/wave","audio/x-wav",
+          "audio/mpeg","audio/mp3","audio/ogg",
+          "audio/flac","audio/x-flac","audio/webm",
+        ]);
+        const ALLOWED_AUDIO_EXT = new Set(["wav","mp3","ogg","flac","webm","m4a"]);
+
+        // ── State ─────────────────────────────────────────────────
+        let currentUser     = null;
+        let faceFile        = null;
+        let voiceFile       = null;
+        let voiceObjectUrl  = null;
+        let faceSubmitting  = false;
+        let voiceSubmitting = false;
+
+        // ── Cached DOM — face tab ─────────────────────────────────
+        const faceSessionSelect   = document.getElementById("faceSessionSelect");
+        const faceUploadZone      = document.getElementById("faceUploadZone");
+        const faceImageInput      = document.getElementById("faceImageInput");
+        const faceUploadTitle     = document.getElementById("faceUploadTitle");
+        const faceUploadSubtitle  = document.getElementById("faceUploadSubtitle");
+        const faceFileLabel       = document.getElementById("faceFileLabel");
+        const facePreviewImg      = document.getElementById("facePreviewImg");
+        const facePreviewPH       = document.getElementById("facePreviewPlaceholder");
+        const faceSubmitBtn       = document.getElementById("faceSubmitBtn");
+        const faceSubmitText      = document.getElementById("faceSubmitText");
+        const faceSubmitIcon      = document.getElementById("faceSubmitIcon");
+        const faceBanner          = document.getElementById("faceBanner");
+        const faceBannerIcon      = document.getElementById("faceBannerIcon");
+        const faceBannerText      = document.getElementById("faceBannerText");
+        const faceResultPanel     = document.getElementById("faceResultPanel");
+        const facePresentCount    = document.getElementById("facePresentCount");
+        const faceAbsentCount     = document.getElementById("faceAbsentCount");
+        const facePresentBadge    = document.getElementById("facePresentBadge");
+        const faceAbsentBadge     = document.getElementById("faceAbsentBadge");
+        const facePresentTbody    = document.getElementById("facePresentTbody");
+        const faceAbsentTbody     = document.getElementById("faceAbsentTbody");
+
+        // ── Cached DOM — voice tab ────────────────────────────────
+        const voiceSessionSelect  = document.getElementById("voiceSessionSelect");
+        const voiceUploadZone     = document.getElementById("voiceUploadZone");
+        const voiceAudioInput     = document.getElementById("voiceAudioInput");
+        const voiceUploadTitle    = document.getElementById("voiceUploadTitle");
+        const voiceUploadSubtitle = document.getElementById("voiceUploadSubtitle");
+        const voiceFileLabel      = document.getElementById("voiceFileLabel");
+        const voicePreviewPH      = document.getElementById("voicePreviewPlaceholder");
+        const voiceAudioPreviewWrap = document.getElementById("voiceAudioPreviewWrap");
+        const voiceAudioPlayer    = document.getElementById("voiceAudioPlayer");
+        const voiceAudioMeta      = document.getElementById("voiceAudioMeta");
+        const voiceSubmitBtn      = document.getElementById("voiceSubmitBtn");
+        const voiceSubmitText     = document.getElementById("voiceSubmitText");
+        const voiceSubmitIcon     = document.getElementById("voiceSubmitIcon");
+        const voiceBanner         = document.getElementById("voiceBanner");
+        const voiceBannerIcon     = document.getElementById("voiceBannerIcon");
+        const voiceBannerText     = document.getElementById("voiceBannerText");
+        const voiceResultPanel    = document.getElementById("voiceResultPanel");
+        const vrMarked            = document.getElementById("vrMarked");
+        const vrStudentId         = document.getElementById("vrStudentId");
+        const vrConfidence        = document.getElementById("vrConfidence");
+        const vrSessionId         = document.getElementById("vrSessionId");
+
+        // ── Init ──────────────────────────────────────────────────
+        function init() {
+          currentUser = readStoredUser();
+
+          if (!currentUser) {
+            window.location.href = "../auth/login.html";
+            return;
+          }
+          if (currentUser.role !== "faculty" && currentUser.role !== "super_admin" && currentUser.role !== "department_admin") {
+            showGlobalBanner("error", "⚠️", "This page is only accessible to faculty.");
+            return;
+          }
+
+          document.getElementById("topbarName").textContent = currentUser.full_name || "Faculty";
+          document.getElementById("topbarRole").textContent = "Instructor";
+
+          bindTabEvents();
+          bindFaceEvents();
+          bindVoiceEvents();
+          loadSessions();
+        }
+
+        // ── localStorage ──────────────────────────────────────────
+        function readStoredUser() {
+          try { return JSON.parse(localStorage.getItem("attendiq_user")) || null; }
+          catch { return null; }
+        }
+
+        function getToken() {
+          return localStorage.getItem("attendiq_token") || "";
+        }
+
+        // ── Tab switching ─────────────────────────────────────────
+        function bindTabEvents() {
+          document.querySelectorAll(".tab-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const target = btn.dataset.tab;
+
+              document.querySelectorAll(".tab-btn").forEach((b) => {
+                b.classList.toggle("active", b.dataset.tab === target);
+                b.setAttribute("aria-selected", String(b.dataset.tab === target));
+              });
+
+              document.querySelectorAll(".tab-panel").forEach((p) => {
+                p.classList.toggle("active", p.id === `tab${capitalize(target)}`);
+              });
+            });
+          });
+        }
+
+        // ── Load sessions into both dropdowns ─────────────────────
+        async function loadSessions() {
+          try {
+            const token = getToken();
+            const resp = await fetch(`${API_BASE_URL}${API_SESSIONS}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!resp.ok) throw new Error(`${resp.status}`);
+            const sessions = await resp.json();
+            populateSessionDropdowns(sessions);
+          } catch (err) {
+            const msg = "Could not load sessions: " + (err.message || "network error");
+            showGlobalBanner("error", "⚠️", msg);
+            const fallback = '<option value="">— Failed to load sessions —</option>';
+            faceSessionSelect.innerHTML = fallback;
+            voiceSessionSelect.innerHTML = fallback;
+          }
+        }
+
+        function populateSessionDropdowns(sessions) {
+          if (!sessions || sessions.length === 0) {
+            const empty = '<option value="">— No sessions found —</option>';
+            faceSessionSelect.innerHTML = empty;
+            voiceSessionSelect.innerHTML = empty;
+            return;
+          }
+
+          const opts = ['<option value="">— Select a session —</option>']
+            .concat(
+              sessions.map((s) => {
+                const label = s.session_name || s.session_label || `Session ${truncateId(s.id)}`;
+                const date  = s.session_date ? ` · ${s.session_date}` : "";
+                return `<option value="${s.id}">${escHtml(label)}${escHtml(date)}</option>`;
+              })
+            )
+            .join("");
+
+          faceSessionSelect.innerHTML  = opts;
+          voiceSessionSelect.innerHTML = opts;
+        }
+
+        // ── Banner helpers ────────────────────────────────────────
+        function showBanner(bannerEl, iconEl, textEl, type, icon, msg) {
+          bannerEl.className = `status-banner show ${type}`;
+          iconEl.textContent = icon;
+          textEl.textContent = msg;
+        }
+
+        function hideBanner(bannerEl) {
+          bannerEl.className = "status-banner";
+        }
+
+        function showGlobalBanner(type, icon, msg) {
+          showBanner(
+            document.getElementById("globalBanner"),
+            document.getElementById("globalBannerIcon"),
+            document.getElementById("globalBannerText"),
+            type, icon, msg
+          );
+        }
+
+        function showFaceBanner(type, icon, msg) {
+          showBanner(faceBanner, faceBannerIcon, faceBannerText, type, icon, msg);
+        }
+
+        function showVoiceBanner(type, icon, msg) {
+          showBanner(voiceBanner, voiceBannerIcon, voiceBannerText, type, icon, msg);
+        }
+
+        // ── Submit button ready-state check ───────────────────────
+        function updateFaceSubmitState() {
+          const ready = !!faceSessionSelect.value && !!faceFile;
+          faceSubmitBtn.disabled = !ready;
+          faceSubmitText.textContent = ready ? "Run Face Check-in" : "Select session & image";
+        }
+
+        function updateVoiceSubmitState() {
+          const ready = !!voiceSessionSelect.value && !!voiceFile;
+          voiceSubmitBtn.disabled = !ready;
+          voiceSubmitText.textContent = ready ? "Run Voice Check-in" : "Select session & audio";
+        }
+
+        // ── Button loading toggle ─────────────────────────────────
+        function setBtnLoading(btn, iconEl, textEl, loading, idleIcon, idleText) {
+          btn.disabled = loading;
+          btn.classList.toggle("loading", loading);
+          if (loading) {
+            textEl.textContent = "Processing…";
+            const spinner = document.createElement("span");
+            spinner.className = "spinner";
+            spinner.id = iconEl.id;
+            iconEl.replaceWith(spinner);
+          } else {
+            textEl.textContent = idleText;
+            const icon = document.createElement("span");
+            icon.id   = iconEl.id;
+            icon.textContent = idleIcon;
+            (document.querySelector(".spinner") || iconEl).replaceWith(icon);
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════
+        //  FACE TAB
+        // ══════════════════════════════════════════════════════════
+
+        function bindFaceEvents() {
+          faceSessionSelect.addEventListener("change", updateFaceSubmitState);
+
+          faceImageInput.addEventListener("change", () => {
+            const f = faceImageInput.files?.[0];
+            if (f) handleFaceFile(f);
+          });
+
+          faceSubmitBtn.addEventListener("click", () => {
+            if (!faceSubmitting) runFaceCheckin();
+          });
+
+          bindDragDrop(faceUploadZone, handleFaceFile);
+        }
+
+        function handleFaceFile(file) {
+          hideBanner(faceBanner);
+          faceResultPanel.style.display = "none";
+
+          const err = validateFile(file, ALLOWED_IMAGE_MIME, null, MAX_IMAGE_BYTES);
+          if (err) {
+            showFaceBanner("error", "❌", err);
+            faceFile = null;
+            clearFacePreview();
+            updateFaceSubmitState();
+            return;
+          }
+
+          faceFile = file;
+
+          // Show image thumbnail
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            facePreviewImg.src = e.target.result;
+            facePreviewImg.style.display = "block";
+            facePreviewPH.style.display  = "none";
+          };
+          reader.readAsDataURL(file);
+
+          faceFileLabel.textContent = `${file.name} (${fmtBytes(file.size)})`;
+          faceFileLabel.style.display = "block";
+          faceUploadTitle.textContent   = file.name;
+          faceUploadSubtitle.textContent = `${fmtBytes(file.size)} · Click to change`;
+
+          updateFaceSubmitState();
+        }
+
+        function clearFacePreview() {
+          facePreviewImg.src = "";
+          facePreviewImg.style.display = "none";
+          facePreviewPH.style.display  = "grid";
+          faceFileLabel.style.display  = "none";
+          faceUploadTitle.textContent   = "Click or drag classroom photo";
+          faceUploadSubtitle.textContent = "Full classroom image with all students visible";
+        }
+
+        async function runFaceCheckin() {
+          if (faceSubmitting || !faceFile || !faceSessionSelect.value) return;
+
+          const token = getToken();
+          if (!token) { redirectLogin(); return; }
+
+          hideBanner(faceBanner);
+          faceResultPanel.style.display = "none";
+          faceSubmitting = true;
+
+          setBtnLoading(
+            faceSubmitBtn,
+            document.getElementById("faceSubmitIcon"),
+            faceSubmitText,
+            true, "📡", "Run Face Check-in"
+          );
+          showFaceBanner("info", "⏳", "Uploading image and running face recognition — please wait…");
+
+          try {
+            const fd = new FormData();
+            fd.append("session_id", faceSessionSelect.value);
+            fd.append("image", faceFile, faceFile.name);
+
+            const resp = await fetch(`${API_BASE_URL}${API_FACE_CHECKIN}`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd,
+            });
+
+            const payload = await resp.json().catch(() => null);
+
+            if (!resp.ok) {
+              throw new Error(payload?.detail || payload?.message || `Server error (${resp.status})`);
+            }
+
+            hideBanner(faceBanner);
+            showFaceBanner(
+              "success", "✅",
+              `Face check-in complete. ${payload.present_count ?? 0} present, ${payload.absent_count ?? 0} absent.`
+            );
+            renderFaceResults(payload);
+
+          } catch (err) {
+            showFaceBanner("error", "❌", err.message || "Face check-in failed.");
+          } finally {
+            faceSubmitting = false;
+            setBtnLoading(
+              faceSubmitBtn,
+              document.getElementById("faceSubmitIcon") || document.querySelector(".spinner"),
+              faceSubmitText,
+              false, "📡", "Run Face Check-in"
+            );
+            faceSubmitBtn.disabled = false;
+          }
+        }
+
+        function renderFaceResults(data) {
+          const present = Array.isArray(data.present_students) ? data.present_students : [];
+          const absent  = Array.isArray(data.absent_students)  ? data.absent_students  : [];
+
+          facePresentCount.textContent = data.present_count ?? present.length;
+          faceAbsentCount.textContent  = data.absent_count  ?? absent.length;
+          facePresentBadge.textContent = present.length;
+          faceAbsentBadge.textContent  = absent.length;
+
+          // Present table
+          if (present.length === 0) {
+            facePresentTbody.innerHTML = '<tr class="table-state-row"><td colspan="3">No students detected as present.</td></tr>';
+          } else {
+            facePresentTbody.innerHTML = present.map((s) => {
+              const conf = typeof s.confidence === "number" ? s.confidence : null;
+              const pct  = conf !== null ? Math.round(conf * 100) : null;
+              return `
+                <tr>
+                  <td>${escHtml(truncateId(s.student_id || s.id || "—"))}</td>
+                  <td>${escHtml(s.full_name || s.name || "—")}</td>
+                  <td>
+                    ${pct !== null
+                      ? `<div class="confidence-bar-wrap">
+                           <div class="confidence-bar">
+                             <div class="confidence-bar-fill" style="width:${pct}%"></div>
+                           </div>
+                           <span class="confidence-label">${pct}%</span>
+                         </div>`
+                      : "—"}
+                  </td>
+                </tr>`;
+            }).join("");
+          }
+
+          // Absent table
+          if (absent.length === 0) {
+            faceAbsentTbody.innerHTML = '<tr class="table-state-row"><td colspan="2">All enrolled students detected present.</td></tr>';
+          } else {
+            faceAbsentTbody.innerHTML = absent.map((s) => `
+              <tr>
+                <td>${escHtml(truncateId(s.student_id || s.id || "—"))}</td>
+                <td>${escHtml(s.full_name || s.name || "—")}</td>
+              </tr>
+            `).join("");
+          }
+
+          faceResultPanel.style.display = "block";
+          faceResultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        //  VOICE TAB
+        // ══════════════════════════════════════════════════════════
+
+        function bindVoiceEvents() {
+          voiceSessionSelect.addEventListener("change", updateVoiceSubmitState);
+
+          voiceAudioInput.addEventListener("change", () => {
+            const f = voiceAudioInput.files?.[0];
+            if (f) handleVoiceFile(f);
+          });
+
+          voiceSubmitBtn.addEventListener("click", () => {
+            if (!voiceSubmitting) runVoiceCheckin();
+          });
+
+          bindDragDrop(voiceUploadZone, handleVoiceFile);
+        }
+
+        function handleVoiceFile(file) {
+          hideBanner(voiceBanner);
+          voiceResultPanel.style.display = "none";
+
+          const err = validateFile(file, ALLOWED_AUDIO_MIME, ALLOWED_AUDIO_EXT, MAX_AUDIO_BYTES);
+          if (err) {
+            showVoiceBanner("error", "❌", err);
+            voiceFile = null;
+            clearVoicePreview();
+            updateVoiceSubmitState();
+            return;
+          }
+
+          voiceFile = file;
+
+          // Audio player preview
+          if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
+          voiceObjectUrl = URL.createObjectURL(file);
+          voiceAudioPlayer.src = voiceObjectUrl;
+          voicePreviewPH.style.display         = "none";
+          voiceAudioPreviewWrap.style.display   = "flex";
+          voiceAudioMeta.textContent = `${file.name} · ${fmtBytes(file.size)}`;
+
+          voiceFileLabel.textContent = `${file.name} (${fmtBytes(file.size)})`;
+          voiceFileLabel.style.display = "block";
+          voiceUploadTitle.textContent    = file.name;
+          voiceUploadSubtitle.textContent = `${fmtBytes(file.size)} · Click to change`;
+
+          updateVoiceSubmitState();
+        }
+
+        function clearVoicePreview() {
+          if (voiceObjectUrl) { URL.revokeObjectURL(voiceObjectUrl); voiceObjectUrl = null; }
+          voiceAudioPlayer.src = "";
+          voicePreviewPH.style.display        = "grid";
+          voiceAudioPreviewWrap.style.display = "none";
+          voiceFileLabel.style.display        = "none";
+          voiceUploadTitle.textContent    = "Click or drag audio file";
+          voiceUploadSubtitle.textContent = "Student voice recording for identification";
+        }
+
+        async function runVoiceCheckin() {
+          if (voiceSubmitting || !voiceFile || !voiceSessionSelect.value) return;
+
+          const token = getToken();
+          if (!token) { redirectLogin(); return; }
+
+          hideBanner(voiceBanner);
+          voiceResultPanel.style.display = "none";
+          voiceSubmitting = true;
+
+          setBtnLoading(
+            voiceSubmitBtn,
+            document.getElementById("voiceSubmitIcon"),
+            voiceSubmitText,
+            true, "🎙️", "Run Voice Check-in"
+          );
+          showVoiceBanner("info", "⏳", "Uploading audio and running speaker identification — please wait…");
+
+          try {
+            const fd = new FormData();
+            fd.append("session_id", voiceSessionSelect.value);
+            fd.append("audio", voiceFile, voiceFile.name);
+
+            const resp = await fetch(`${API_BASE_URL}${API_VOICE_CHECKIN}`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd,
+            });
+
+            const payload = await resp.json().catch(() => null);
+
+            if (!resp.ok) {
+              throw new Error(payload?.detail || payload?.message || `Server error (${resp.status})`);
+            }
+
+            hideBanner(voiceBanner);
+            showVoiceBanner("success", "✅", payload.attendance_marked
+              ? "Voice check-in successful. Attendance marked."
+              : "Speaker not matched — attendance not marked.");
+
+            renderVoiceResult(payload);
+
+          } catch (err) {
+            showVoiceBanner("error", "❌", err.message || "Voice check-in failed.");
+          } finally {
+            voiceSubmitting = false;
+            setBtnLoading(
+              voiceSubmitBtn,
+              document.getElementById("voiceSubmitIcon") || document.querySelector(".spinner"),
+              voiceSubmitText,
+              false, "🎙️", "Run Voice Check-in"
+            );
+            voiceSubmitBtn.disabled = false;
+          }
+        }
+
+        function renderVoiceResult(data) {
+          const conf = typeof data.confidence === "number"
+            ? `${Math.round(data.confidence * 100)}% (${data.confidence.toFixed(4)})`
+            : data.confidence ?? "—";
+
+          vrMarked.textContent    = data.attendance_marked ? "✅ Yes" : "❌ No";
+          vrStudentId.textContent = truncateId(data.student_id) || "—";
+          vrConfidence.textContent = conf;
+          vrSessionId.textContent = truncateId(data.session_id) || "—";
+
+          voiceResultPanel.style.display = "block";
+          voiceResultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        //  SHARED UTILITIES
+        // ══════════════════════════════════════════════════════════
+
+        function validateFile(file, mimeSet, extSet, maxBytes) {
+          const mime = file.type || "";
+          const ext  = file.name.split(".").pop().toLowerCase();
+          if (mime && !mimeSet.has(mime) && (!extSet || !extSet.has(ext))) {
+            return `Unsupported file type "${mime || ext}".`;
+          }
+          if (file.size === 0)       return "The selected file is empty.";
+          if (file.size > maxBytes)  return `File too large (${fmtBytes(file.size)}). Max ${fmtBytes(maxBytes)}.`;
+          return null;
+        }
+
+        function bindDragDrop(zone, handler) {
+          zone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            zone.classList.add("drag-over");
+          });
+          zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+          zone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            zone.classList.remove("drag-over");
+            const f = e.dataTransfer?.files?.[0];
+            if (f) handler(f);
+          });
+        }
+
+        function redirectLogin() {
+          showGlobalBanner("error", "🔒", "Session expired. Redirecting to login…");
+          setTimeout(() => { window.location.href = "../auth/login.html"; }, 1600);
+        }
+
+        function fmtBytes(b) {
+          if (b < 1024)          return `${b} B`;
+          if (b < 1024 * 1024)   return `${(b/1024).toFixed(1)} KB`;
+          return `${(b/(1024*1024)).toFixed(1)} MB`;
+        }
+
+        function truncateId(id) {
+          if (!id) return "—";
+          return String(id).length > 16 ? `${String(id).slice(0,8)}…${String(id).slice(-4)}` : id;
+        }
+
+        function capitalize(s) {
+          return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        function escHtml(str) {
+          const d = document.createElement("div");
+          d.textContent = str;
+          return d.innerHTML;
+        }
+
+        // ── Boot ──────────────────────────────────────────────────
+        document.addEventListener("DOMContentLoaded", init);
+
+      })();
+    </script>
+  </body>
+</html>
