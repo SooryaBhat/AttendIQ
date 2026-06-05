@@ -1,1 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Faculty Sessions</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/attendance.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Faculty</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="sessions.html" class="active">
+            <span class="nav-icon">🗓️</span>
+            <span>Sessions</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="attendance_report.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">Sessions
+          <br />Manage your class sessions</div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Attendance Sessions</h1>
+            <p>Create, manage and review attendance sessions.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Faculty User</strong>
+                <small>Instructor</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Sessions</h2>
+            <p>Overview of your attendance sessions and quick actions.</p>
+          </div>
+        </section>
+
+        <div class="card-grid" style="margin-bottom:1rem;">
+          <article class="card">
+            <h3>Total Sessions</h3>
+            <p id="statTotalSessions" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Active Sessions</h3>
+            <p id="statActiveSessions" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Completed Sessions</h3>
+            <p id="statCompletedSessions" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Today's Sessions</h3>
+            <p id="statTodaysSessions" class="metric-value">—</p>
+          </article>
+        </div>
+
+        <div class="panel">
+          <div class="panel-actions" style="display:flex; gap:0.5rem; align-items:center; margin-bottom:1rem;">
+            <input id="searchInput" placeholder="Search sessions" class="input" style="flex:1;" />
+            <select id="filterSubject" class="input" style="width:220px;"><option value="">All subjects</option></select>
+            <button id="btnAddSession" class="btn btn-primary">+ Add Session</button>
+          </div>
+
+          <div id="sessionsLoading" style="display:none; padding:1rem;">Loading sessions…</div>
+          <div id="sessionsError" style="display:none; padding:1rem; color:var(--danger);">Failed to load sessions.</div>
+
+          <div class="table-wrapper">
+            <table class="sessions-table">
+              <thead>
+                <tr>
+                  <th>Session Name</th>
+                  <th>Subject</th>
+                  <th>Date</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sessionsTableBody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Add Session Modal -->
+    <div id="modalAddSession" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h3>Create Session</h3>
+        <div class="form-row">
+          <label>Session Name</label>
+          <input id="modalSessionName" class="input" />
+        </div>
+        <div class="form-row">
+          <label>Subject</label>
+          <select id="modalSubjectSelect" class="input"></select>
+        </div>
+        <div class="form-row">
+          <label>Date</label>
+          <input id="modalDate" type="date" class="input" />
+        </div>
+        <div class="form-row">
+          <label>Start Time</label>
+          <input id="modalStartTime" type="time" class="input" />
+        </div>
+        <div class="form-row">
+          <label>End Time</label>
+          <input id="modalEndTime" type="time" class="input" />
+        </div>
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+          <button id="modalCancel" class="btn">Cancel</button>
+          <button id="modalCreate" class="btn btn-primary">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        initSessionsPage();
+      });
+
+      async function initSessionsPage() {
+        const token = localStorage.getItem('attendiq_token');
+        if (!token) return window.location.href = '../auth/login.html';
+
+        try {
+          await fetchCurrentUser();
+        } catch (err) {
+          localStorage.removeItem('attendiq_token');
+          localStorage.removeItem('attendiq_user');
+          return window.location.href = '../auth/login.html';
+        }
+
+        bindUI();
+        await loadSubjects();
+        await refreshSessions();
+      }
+
+      function bindUI() {
+        document.getElementById('btnAddSession').addEventListener('click', () => showModal(true));
+        document.getElementById('modalCancel').addEventListener('click', () => showModal(false));
+        document.getElementById('modalCreate').addEventListener('click', createSessionFromModal);
+        document.getElementById('searchInput').addEventListener('input', debounce(refreshSessions, 300));
+        document.getElementById('filterSubject').addEventListener('change', refreshSessions);
+      }
+
+      function showModal(show) {
+        const modal = document.getElementById('modalAddSession');
+        modal.style.display = show ? 'block' : 'none';
+      }
+
+      async function loadSubjects() {
+        try {
+          const subjects = await getSubjects();
+          const filter = document.getElementById('filterSubject');
+          const modalSel = document.getElementById('modalSubjectSelect');
+          filter.innerHTML = '<option value="">All subjects</option>' + subjects.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('');
+          modalSel.innerHTML = subjects.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('');
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      async function refreshSessions() {
+        const loading = document.getElementById('sessionsLoading');
+        const errorEl = document.getElementById('sessionsError');
+        const tbody = document.getElementById('sessionsTableBody');
+        loading.style.display = 'block'; errorEl.style.display='none'; tbody.innerHTML='';
+
+        try {
+          const subjectFilter = document.getElementById('filterSubject').value || null;
+          const sessions = await getAttendanceSessions(subjectFilter);
+          renderStats(sessions);
+          renderSessionsTable(sessions);
+          loading.style.display = 'none';
+        } catch (err) {
+          loading.style.display = 'none';
+          errorEl.style.display = 'block';
+          errorEl.textContent = err.message || 'Failed to load sessions.';
+        }
+      }
+
+      function renderStats(sessions) {
+        const total = sessions.length;
+        const active = sessions.filter(s => s.status === 'processing' || s.status === 'started' || s.status === 'active').length;
+        const completed = sessions.filter(s => s.status === 'ended' || s.status === 'completed').length;
+        const today = sessions.filter(s => (s.session_date || s.created_at || '').startsWith(new Date().toISOString().split('T')[0])).length;
+        document.getElementById('statTotalSessions').textContent = total;
+        document.getElementById('statActiveSessions').textContent = active;
+        document.getElementById('statCompletedSessions').textContent = completed;
+        document.getElementById('statTodaysSessions').textContent = today;
+      }
+
+      function renderSessionsTable(sessions) {
+        const tbody = document.getElementById('sessionsTableBody');
+        const q = document.getElementById('searchInput').value.trim().toLowerCase();
+        const rows = sessions
+          .filter(s => !q || (s.session_label || s.session_name || '').toLowerCase().includes(q) || (s.subject_name || '').toLowerCase().includes(q))
+          .sort((a,b)=> new Date(b.created_at || 0) - new Date(a.created_at || 0))
+          .map(s => {
+            const dateText = s.session_date ? formatDate(s.session_date) : (s.created_at ? formatDate(s.created_at) : '-');
+            const start = s.started_at ? new Date(s.started_at).toLocaleTimeString() : (s.start_time? new Date(s.start_time).toLocaleTimeString(): '-');
+            const end = s.ended_at ? new Date(s.ended_at).toLocaleTimeString() : (s.end_time? new Date(s.end_time).toLocaleTimeString(): '-');
+            const subjectLabel = s.subject_name || (s.subject_id || '-');
+            const actions = [];
+            if (s.status === 'pending' || s.status === 'created') actions.push(`<button data-action="start" data-id="${s.id}" class="action-btn">▶ Start</button>`);
+            if (s.status === 'processing' || s.status === 'started' || s.status === 'active') actions.push(`<button data-action="end" data-id="${s.id}" class="action-btn">⏹ End</button>`);
+            actions.push(`<button data-action="view" data-id="${s.id}" class="action-btn">ℹ️ View</button>`);
+            actions.push(`<button data-action="delete" data-id="${s.id}" class="action-btn action-danger">🗑 Delete</button>`);
+            return `<tr data-id="${s.id}"><td>${escapeHtml(s.session_label||s.session_name||`Session ${s.id?.slice?.(0,8)||''}`)}</td><td>${escapeHtml(subjectLabel)}</td><td>${escapeHtml(dateText)}</td><td>${escapeHtml(start)}</td><td>${escapeHtml(end)}</td><td>${escapeHtml(s.status)}</td><td>${actions.join(' ')}</td></tr>`;
+          });
+
+        tbody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#64748b;">No sessions found.</td></tr>';
+
+        tbody.querySelectorAll('button[data-action]').forEach(btn=> btn.addEventListener('click', async (ev)=>{
+          const id = btn.dataset.id;
+          const action = btn.dataset.action;
+          if (action==='start') { try{ await startAttendanceSession(id); await refreshSessions(); }catch(e){alert(e.message||e);} }
+          if (action==='end') { if(confirm('End session?')){ try{ await endAttendanceSession(id); await refreshSessions(); }catch(e){alert(e.message||e);} } }
+          if (action==='view') { viewSessionAttendance(id); }
+          if (action==='delete') { if(confirm('Delete session? This will remove its records.')){ try{ await deleteAttendanceSession(id); await refreshSessions(); }catch(e){alert(e.message||e);} } }
+        }));
+      }
+
+      async function createSessionFromModal() {
+        const name = document.getElementById('modalSessionName').value.trim();
+        const subject = document.getElementById('modalSubjectSelect').value;
+        const date = document.getElementById('modalDate').value;
+        const start = document.getElementById('modalStartTime').value;
+        const end = document.getElementById('modalEndTime').value;
+        if (!name || !subject || !date) return alert('Please provide session name, subject and date.');
+
+        try {
+          const payload = { session_label: name, subject_id: subject, session_date: date, start_time: start||null, end_time: end||null };
+          await createAttendanceSession(payload);
+          showModal(false);
+          await refreshSessions();
+        } catch (err) {
+          alert(err.message||'Failed to create session.');
+        }
+      }
+
+      async function viewSessionAttendance(sessionId) {
+        try {
+          const records = await getSessionAttendanceRecords(sessionId);
+          const summary = `Attendance records: ${records.length}`;
+          // quick view dialog
+          alert(summary + '\nOpen Reports for full details.');
+        } catch (err) {
+          alert(err.message||'Failed to load attendance records.');
+        }
+      }
+
+      function debounce(fn, wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
+      function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+      function formatDate(v){ if(!v) return '-'; const d=new Date(v); return d.toLocaleDateString(); }
+    </script>
+  </body>
+</html>
 <!-- Create & view attendance sessions (placeholder) -->

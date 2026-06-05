@@ -14,15 +14,18 @@ from app.models.attendance import (
     AttendanceRecordResponse,
     AttendanceGroupFaceCheckinResponse,
     AttendanceVoiceCheckinResponse,
+    StudentAttendanceHistoryItem,
 )
 from app.services.attendance_service import (
     create_session,
     start_session,
     end_session,
+    delete_session,
     list_sessions,
     get_session,
     mark_attendance,
     get_session_attendance,
+    get_student_history,
     face_checkin,
     voice_checkin,
     group_face_checkin,
@@ -118,6 +121,16 @@ def start_attendance_session(session_id: UUID, current_user: UserResponse = Depe
 def end_attendance_session(session_id: UUID, current_user: UserResponse = Depends(get_current_user)) -> AttendanceSessionResponse:
     try:
         return end_session(str(session_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.delete("/sessions/{session_id}")
+def delete_attendance_session(session_id: UUID, current_user: UserResponse = Depends(get_current_user)) -> dict:
+    try:
+        return delete_session(str(session_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except Exception as exc:
@@ -278,5 +291,13 @@ async def voice_checkin_route(
 def get_session_records(session_id: UUID, current_user: UserResponse = Depends(get_current_user)) -> List[AttendanceRecordResponse]:
     try:
         return get_session_attendance(str(session_id))
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+
+@router.get("/student-history", response_model=List[StudentAttendanceHistoryItem])
+def get_student_history_route(current_user: UserResponse = Depends(get_current_user)) -> List[StudentAttendanceHistoryItem]:
+    try:
+        return get_student_history(str(current_user.id))
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc

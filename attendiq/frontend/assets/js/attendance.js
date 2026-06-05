@@ -1,156 +1,330 @@
 ﻿/*
-  Attendance Session Module for AttendIQ
-  Handles faculty and student attendance functionality
+  Faculty attendance page script using real backend data.
 */
 
-// Global State
-let sessionState = {
-  isActive: false,
-  selectedSession: null,
-  startTime: null,
-  elapsedSeconds: 0,
-  currentStudent: null,
-};
-
-let sessionTimerInterval = null;
-
-// Initialize
 document.addEventListener("DOMContentLoaded", function () {
-  initializeEventListeners();
-  initializePage();
+  if (!window.location.pathname.toLowerCase().includes("faculty/attendance.html")) return;
+  initFacultyAttendancePage();
 });
 
-function initializeEventListeners() {
-  const subjectSelect = document.getElementById("subjectSelect");
-  const startSessionBtn = document.getElementById("startSessionBtn");
-  const endSessionBtn = document.getElementById("endSessionBtn");
-  const closeDetailsBtn = document.getElementById("closeDetailsBtn");
-  const joinSessionBtn = document.getElementById("joinSessionBtn");
-  const markAttendanceBtn = document.getElementById("markAttendanceBtn");
+async function initFacultyAttendancePage() {
+  const banner = getBanner("attendanceBanner");
+  const user = await ensureAuthenticated(banner);
+  if (!user) return;
 
-  if (subjectSelect) {
-    subjectSelect.addEventListener("change", handleSubjectChange);
-  }
-
-  if (startSessionBtn) {
-    startSessionBtn.addEventListener("click", startSession);
-  }
-
-  if (endSessionBtn) {
-    endSessionBtn.addEventListener("click", endSession);
-  }
-
-  if (closeDetailsBtn) {
-    closeDetailsBtn.addEventListener("click", closeSessionDetails);
-  }
-
-  if (joinSessionBtn) {
-    joinSessionBtn.addEventListener("click", handleJoinSession);
-  }
-
-  if (markAttendanceBtn) {
-    markAttendanceBtn.addEventListener("click", handleMarkAttendance);
-  }
+  renderUserMenu(user);
+  bindAttendancePageEvents();
+  await loadSubjectOptions();
+  await refreshAttendancePage();
 }
 
-function initializePage() {
-  const path = window.location.pathname.toLowerCase();
-
-  if (path.includes("faculty/attendance")) {
-    initializeFacultyAttendance();
-  } else if (path.includes("student/attendance")) {
-    initializeStudentAttendance();
-  }
+function getBanner(id) {
+  const element = document.getElementById(id);
+  if (!element) return null;
+  return {
+    element,
+    icon: element.querySelector(".status-icon"),
+    text: element.querySelector("span[id$='Text']") || element.querySelector("span:last-child"),
+  };
 }
 
-function getStoredUser() {
+function showBanner(banner, type, icon, message) {
+  if (!banner || !banner.element) return;
+  banner.element.className = `status-banner show ${type}`;
+  if (banner.icon) banner.icon.textContent = icon;
+  if (banner.text) banner.textContent = message;
+}
+
+function hideBanner(banner) {
+  if (!banner || !banner.element) return;
+  banner.element.className = "status-banner";
+}
+
+async function ensureAuthenticated(banner) {
+  const token = localStorage.getItem("attendiq_token");
+  if (!token) {
+    window.location.href = "../auth/login.html";
+    return null;
+  }
+
   try {
-    return JSON.parse(localStorage.getItem("attendiq_user")) || null;
+    const user = await fetchCurrentUser();
+    localStorage.setItem("attendiq_user", JSON.stringify(user));
+    if (!user || !["faculty", "super_admin", "department_admin"].includes(user.role)) {
+      showBanner(banner, "error", "⚠️", "Faculty access required.");
+      return null;
+    }
+    return user;
   } catch (error) {
+    localStorage.removeItem("attendiq_token");
+    localStorage.removeItem("attendiq_user");
+    window.location.href = "../auth/login.html";
     return null;
   }
 }
 
-function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+function renderUserMenu(user) {
+  const toggle = document.querySelector(".user-menu-toggle");
+  if (!toggle) return;
+  const name = toggle.querySelector("strong");
+  const role = toggle.querySelector("small");
+  if (name) name.textContent = user.full_name || "Faculty";
+  if (role) role.textContent = "Instructor";
 }
 
-function showError(message) {
-  alert("❌ " + message);
-  console.error(message);
-}
-
-function showSuccess(message) {
-  alert("✓ " + message);
-}
-
-// ============================================================================
-// FACULTY ATTENDANCE MODULE
-// ============================================================================
-
-async function initializeFacultyAttendance() {
-  try {
-    const user = getStoredUser();
-    if (!user) {
-      showError("User not found. Please log in again.");
-      return;
-    }
-
-    await renderSessionsHistory();
-  } catch (error) {
-    showError("Unable to initialize faculty attendance: " + error.message);
-  }
-}
-
-function handleSubjectChange(event) {
-  const startSessionBtn = document.getElementById("startSessionBtn");
-  if (startSessionBtn) {
-    startSessionBtn.disabled = !event.target.value;
-  }
-}
-
-async function startSession() {
+function bindAttendancePageEvents() {
   const subjectSelect = document.getElementById("subjectSelect");
+  const startSessionBtn = document.getElementById("startSessionBtn");
+  const endSessionBtn = document.getElementById("endSessionBtn");
+
+  if (subjectSelect) {
+    subjectSelect.addEventListener("change", () => {
+      if (startSessionBtn) startSessionBtn.disabled = !subjectSelect.value;
+    });
+  }
+
+  if (startSessionBtn) {
+    startSessionBtn.addEventListener("click", async () => {
+      const user = JSON.parse(localStorage.getItem("attendiq_user"));
+      if (!user) return;
+      await handleStartSession(user);
+    });
+  }
+
+  if (endSessionBtn) {
+    endSessionBtn.addEventListener("click", async () => {
+      await handleEndSession();
+    });
+  }
+}
+
+async function loadSubjectOptions() {
+  const subjectSelect = document.getElementById("subjectSelect");
+  const startSessionBtn = document.getElementById("startSessionBtn");
+
   if (!subjectSelect) return;
 
-  const subjectId = subjectSelect.value;
-  if (!subjectId) return;
-
   try {
-    const user = getStoredUser();
-    if (!user) {
-      showError("User not found. Please log in again.");
+    const subjects = await getSubjects();
+    if (!subjects || subjects.length === 0) {
+      subjectSelect.innerHTML = '<option value="">No subjects available</option>';
+      if (startSessionBtn) startSessionBtn.disabled = true;
       return;
     }
 
-    const sessionPayload = {
-      subject_id: subjectId,
-      faculty_id: user.id,
-      session_name: `Session ${new Date().toLocaleTimeString()}`,
-    };
-
-    const createdSession = await createAttendanceSession(sessionPayload);
-    const startedSession = await startAttendanceSession(createdSession.id);
-
-    sessionState.isActive = true;
-    sessionState.selectedSession = startedSession;
-    sessionState.startTime = new Date();
-    sessionState.elapsedSeconds = 0;
-
-    showSessionActive(startedSession);
-    await renderAttendanceRecords(startedSession.id);
-    startSessionTimer();
-
-    subjectSelect.disabled = true;
-    showSuccess("Attendance session started successfully.");
+    subjectSelect.innerHTML = ['<option value="">— Select a subject —</option>']
+      .concat(subjects.map((subject) => `<option value="${subject.id}">${escapeHtml(`${subject.name} (${subject.code})`)}</option>`))
+      .join("");
+    if (startSessionBtn) startSessionBtn.disabled = true;
   } catch (error) {
-    showError("Failed to start session: " + error.message);
+    subjectSelect.innerHTML = '<option value="">Unable to load subjects</option>';
+    if (startSessionBtn) startSessionBtn.disabled = true;
   }
 }
 
+async function refreshAttendancePage() {
+  const banner = getBanner("attendanceBanner");
+
+  try {
+    showBanner(banner, "info", "⏳", "Loading subjects and sessions...");
+    const [subjects, sessions] = await Promise.all([getSubjects(), getAttendanceSessions()]);
+    const subjectMap = subjects.reduce((map, subject) => {
+      map[subject.id] = subject;
+      return map;
+    }, {});
+
+    renderSessionHistory(sessions, subjectMap);
+    await renderActiveSessionInfo(sessions, subjectMap);
+    hideBanner(banner);
+  } catch (error) {
+    showBanner(banner, "error", "❌", error.message || "Unable to load attendance data.");
+  }
+}
+
+async function handleStartSession(user) {
+  const subjectSelect = document.getElementById("subjectSelect");
+  const banner = getBanner("attendanceBanner");
+  if (!subjectSelect || !subjectSelect.value) return;
+
+  try {
+    showBanner(banner, "info", "⏳", "Creating attendance session...");
+    const payload = {
+      subject_id: subjectSelect.value,
+      faculty_id: user.id,
+      department_id: user.department_id,
+      session_label: `Session ${new Date().toLocaleTimeString()}`,
+      session_date: new Date().toISOString().split("T")[0],
+      method: "face",
+    };
+    const created = await createAttendanceSession(payload);
+    await startAttendanceSession(created.id);
+    await refreshAttendancePage();
+    showBanner(banner, "success", "✅", "Session started successfully.");
+    subjectSelect.value = "";
+  } catch (error) {
+    showBanner(banner, "error", "❌", error.message || "Unable to start session.");
+  }
+}
+
+async function handleEndSession() {
+  const banner = getBanner("attendanceBanner");
+  const active = await getCurrentActiveSession();
+  if (!active) {
+    showBanner(banner, "warning", "⚠️", "No active session to end.");
+    return;
+  }
+
+  if (!confirm("End the current attendance session?")) return;
+
+  try {
+    await endAttendanceSession(active.id);
+    await refreshAttendancePage();
+    showBanner(banner, "success", "✅", "Session ended successfully.");
+  } catch (error) {
+    showBanner(banner, "error", "❌", error.message || "Unable to end session.");
+  }
+}
+
+async function getCurrentActiveSession() {
+  const sessions = await getAttendanceSessions();
+  return sessions.find((session) => session.status === "processing") || null;
+}
+
+function renderSessionHistory(sessions, subjectMap) {
+  const body = document.getElementById("sessionsHistoryBody");
+  if (!body) return;
+
+  if (!sessions || sessions.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">No sessions yet.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = sessions
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .map((session) => {
+      const subject = subjectMap[session.subject_id];
+      const subjectLabel = subject ? `${subject.name} (${subject.code})` : "Unknown";
+      const dateText = session.session_date ? formatDate(session.session_date) : formatDate(session.created_at);
+      const actions = [];
+      if (session.status === "pending") {
+        actions.push(`<button class="action-btn" data-action="start" data-id="${session.id}">▶ Start</button>`);
+      }
+      if (session.status === "processing") {
+        actions.push(`<button class="action-btn" data-action="end" data-id="${session.id}">⏹ End</button>`);
+      }
+      actions.push(`<button class="action-btn action-danger" data-action="delete" data-id="${session.id}">🗑 Delete</button>`);
+
+      return `
+        <tr data-session-id="${session.id}" data-status="${session.status}">
+          <td>${escapeHtml(subjectLabel)}</td>
+          <td>${escapeHtml(session.session_label)}</td>
+          <td>${escapeHtml(dateText)}</td>
+          <td>${escapeHtml(session.status)}</td>
+          <td>${session.attendance_count || 0}</td>
+          <td>${actions.join(" ")}</td>
+        </tr>`;
+    })
+    .join("");
+
+  body.querySelectorAll("button[data-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const { action, id } = button.dataset;
+      if (action === "start") {
+        await startAttendanceSession(id);
+      }
+      if (action === "end") {
+        await endAttendanceSession(id);
+      }
+      if (action === "delete") {
+        if (!confirm("Delete this session? This will remove its records.")) return;
+        await deleteAttendanceSession(id);
+      }
+      await refreshAttendancePage();
+    });
+  });
+}
+
+async function renderActiveSessionInfo(sessions, subjectMap) {
+  const activeSession = sessions.find((session) => session.status === "processing");
+  const activeSection = document.getElementById("sessionActive");
+  const activeSubject = document.getElementById("activeSubject");
+  const statusBadge = document.getElementById("sessionStatus");
+  const timerDisplay = document.getElementById("sessionTimer");
+  const activeStudentsCount = document.getElementById("activeStudentsCount");
+  const markedPresentCount = document.getElementById("markedPresentCount");
+  const absentCount = document.getElementById("absentCount");
+  const studentsBody = document.getElementById("studentsTableBody");
+
+  if (!activeSession) {
+    if (activeSection) activeSection.style.display = "none";
+    if (studentsBody) studentsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:#64748b;">No active session in progress.</td></tr>';
+    return;
+  }
+
+  if (activeSection) activeSection.style.display = "block";
+  if (activeSubject) activeSubject.textContent = subjectMap[activeSession.subject_id]?.name || "Unknown";
+  if (statusBadge) {
+    statusBadge.textContent = "Active";
+    statusBadge.className = "status-badge status-active";
+  }
+  if (timerDisplay) timerDisplay.textContent = activeSession.started_at ? getSessionDuration(activeSession.started_at) : "00:00:00";
+
+  const records = await getSessionAttendanceRecords(activeSession.id);
+  const present = records.filter((record) => record.status === "present").length;
+  const absent = records.filter((record) => record.status === "absent").length;
+
+  if (activeStudentsCount) activeStudentsCount.textContent = `${records.length}`;
+  if (markedPresentCount) markedPresentCount.textContent = `${present}`;
+  if (absentCount) absentCount.textContent = `${absent}`;
+
+  if (!studentsBody) return;
+  if (!records || records.length === 0) {
+    studentsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:#64748b;">No attendance records yet.</td></tr>';
+    return;
+  }
+
+  studentsBody.innerHTML = records
+    .map((record) => {
+      const statusClass = record.status === "present" ? "present" : record.status === "absent" ? "absent" : "pending";
+      return `
+        <tr>
+          <td>${escapeHtml(record.student_id.substring(0, 8))}</td>
+          <td>${escapeHtml(record.student_id.substring(0, 8))}</td>
+          <td>${record.marked_at ? escapeHtml(new Date(record.marked_at).toLocaleTimeString()) : "-"}</td>
+          <td><span class="status-pill ${statusClass}">${escapeHtml(capitalize(record.status))}</span></td>
+          <td><button class="action-btn" onclick="markStudentAttendance('${record.student_id}', 'present')">✓</button></td>
+        </tr>`;
+    })
+    .join("");
+}
+
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = value;
+  return div.innerHTML;
+}
+
+function capitalize(value) {
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function getSessionDuration(startedAt) {
+  const started = new Date(startedAt).getTime();
+  if (Number.isNaN(started)) return "00:00:00";
+  const diff = Math.max(Date.now() - started, 0);
+  const seconds = Math.floor(diff / 1000);
+  const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+  const secs = String(seconds % 60).padStart(2, "0");
+  return `${hours}:${minutes}:${secs}`;
+}
 async function renderAttendanceRecords(sessionId) {
   const tbody = document.getElementById("studentsTableBody");
   const activeStudentsCount = document.getElementById("activeStudentsCount");

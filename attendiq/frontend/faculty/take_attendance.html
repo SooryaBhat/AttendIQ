@@ -161,6 +161,82 @@
         display: none;
       }
 
+      .camera-card,
+      .recording-card {
+        margin-top: 1.25rem;
+        background: #ffffff;
+        border: 1px solid #d9e2ef;
+        border-radius: 20px;
+        padding: 1.25rem;
+      }
+
+      .camera-card h3,
+      .recording-card h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1rem;
+        color: #102a43;
+      }
+
+      .camera-card p,
+      .recording-card p {
+        margin: 0;
+        color: #52637a;
+        font-size: 0.92rem;
+      }
+
+      .camera-actions,
+      .recording-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+
+      .camera-actions button,
+      .recording-actions button {
+        min-width: 120px;
+      }
+
+      .camera-preview {
+        margin-top: 1rem;
+        width: 100%;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #000;
+        display: none;
+      }
+
+      .camera-preview video {
+        width: 100%;
+        display: block;
+      }
+
+      .camera-status,
+      .recording-status {
+        margin-top: 0.85rem;
+        color: #52637a;
+        font-size: 0.92rem;
+      }
+
+      .recording-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-top: 1rem;
+      }
+
+      .recording-timer {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f4bb2;
+      }
+
+      .recording-status-text {
+        font-size: 0.92rem;
+        color: #52637a;
+      }
+
       /* ── Checkin layout ──────────────────────────────────────── */
       .checkin-layout {
         display: grid;
@@ -613,6 +689,24 @@
                 </label>
                 <p class="selected-file-label" id="faceFileLabel"></p>
 
+                <div class="camera-card">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+                    <div>
+                      <h3>Live camera check-in</h3>
+                      <p>Open the webcam, capture a classroom photo, and submit it directly.</p>
+                    </div>
+                  </div>
+                  <div class="camera-actions">
+                    <button id="openCameraBtn" type="button" class="button button-secondary">Open Camera</button>
+                    <button id="captureCameraBtn" type="button" class="button button-primary" disabled>Capture</button>
+                    <button id="retakeCameraBtn" type="button" class="button button-outline" style="display:none;">Retake</button>
+                  </div>
+                  <div class="camera-preview" id="faceCameraWrapper">
+                    <video id="faceCameraPreview" playsinline autoplay muted></video>
+                  </div>
+                  <div class="camera-status" id="cameraStatus">Use the camera to capture a classroom photo.</div>
+                </div>
+
                 <button
                   type="button"
                   class="btn-submit"
@@ -770,6 +864,24 @@
                 </label>
                 <p class="selected-file-label" id="voiceFileLabel"></p>
 
+                <div class="recording-card">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+                    <div>
+                      <h3>Microphone recording</h3>
+                      <p>Record spoken attendance directly from the browser and preview before submission.</p>
+                    </div>
+                  </div>
+                  <div class="recording-actions">
+                    <button id="startRecordingBtn" type="button" class="button button-secondary">Start Recording</button>
+                    <button id="stopRecordingBtn" type="button" class="button button-primary" disabled>Stop Recording</button>
+                    <button id="playRecordingBtn" type="button" class="button button-outline" disabled>Play Recording</button>
+                  </div>
+                  <div class="recording-meta">
+                    <span class="recording-timer" id="recordingTimer">00:00</span>
+                    <span class="recording-status-text" id="recordingStatus">Ready to record</span>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   class="btn-submit"
@@ -837,6 +949,7 @@
 
     <!-- ── Scripts ─────────────────────────────────────────────── -->
     <script src="../assets/js/api.js"></script>
+    <script src="../assets/js/camera.js"></script>
     <script src="../assets/js/dashboard.js"></script>
     <script>
       // ============================================================
@@ -870,10 +983,14 @@
         // ── State ─────────────────────────────────────────────────
         let currentUser     = null;
         let faceFile        = null;
+        let faceCameraFile  = null;
         let voiceFile       = null;
         let voiceObjectUrl  = null;
         let faceSubmitting  = false;
         let voiceSubmitting = false;
+        let recordingInProgress = false;
+        let recordingTimerId     = null;
+        let recordingStartTime   = null;
 
         // ── Cached DOM — face tab ─────────────────────────────────
         const faceSessionSelect   = document.getElementById("faceSessionSelect");
@@ -897,6 +1014,10 @@
         const faceAbsentBadge     = document.getElementById("faceAbsentBadge");
         const facePresentTbody    = document.getElementById("facePresentTbody");
         const faceAbsentTbody     = document.getElementById("faceAbsentTbody");
+        const faceCameraPreview   = document.getElementById("faceCameraPreview");
+        const openCameraBtn       = document.getElementById("openCameraBtn");
+        const captureCameraBtn    = document.getElementById("captureCameraBtn");
+        const retakeCameraBtn     = document.getElementById("retakeCameraBtn");
 
         // ── Cached DOM — voice tab ────────────────────────────────
         const voiceSessionSelect  = document.getElementById("voiceSessionSelect");
@@ -916,6 +1037,11 @@
         const voiceBannerIcon     = document.getElementById("voiceBannerIcon");
         const voiceBannerText     = document.getElementById("voiceBannerText");
         const voiceResultPanel    = document.getElementById("voiceResultPanel");
+        const startRecordingBtn   = document.getElementById("startRecordingBtn");
+        const stopRecordingBtn    = document.getElementById("stopRecordingBtn");
+        const playRecordingBtn    = document.getElementById("playRecordingBtn");
+        const recordingTimer      = document.getElementById("recordingTimer");
+        const recordingStatus     = document.getElementById("recordingStatus");
         const vrMarked            = document.getElementById("vrMarked");
         const vrStudentId         = document.getElementById("vrStudentId");
         const vrConfidence        = document.getElementById("vrConfidence");
@@ -940,6 +1066,14 @@
           bindTabEvents();
           bindFaceEvents();
           bindVoiceEvents();
+
+          captureCameraBtn.disabled = true;
+          retakeCameraBtn.style.display = "none";
+          stopRecordingBtn.disabled = true;
+          playRecordingBtn.disabled = true;
+          recordingTimer.textContent = "00:00";
+          recordingStatus.textContent = "Ready to record";
+
           loadSessions();
         }
 
@@ -1053,6 +1187,13 @@
           voiceSubmitText.textContent = ready ? "Run Voice Check-in" : "Select session & audio";
         }
 
+        function formatTimer(ms) {
+          const totalSeconds = Math.floor(ms / 1000);
+          const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+          const seconds = String(totalSeconds % 60).padStart(2, "0");
+          return `${minutes}:${seconds}`;
+        }
+
         // ── Button loading toggle ─────────────────────────────────
         function setBtnLoading(btn, iconEl, textEl, loading, idleIcon, idleText) {
           btn.disabled = loading;
@@ -1082,6 +1223,54 @@
           faceImageInput.addEventListener("change", () => {
             const f = faceImageInput.files?.[0];
             if (f) handleFaceFile(f);
+          });
+
+          openCameraBtn.addEventListener("click", async () => {
+            try {
+              await startCamera(faceCameraPreview);
+              faceCameraPreview.style.display = "block";
+              captureCameraBtn.disabled = false;
+              openCameraBtn.disabled = true;
+              showFaceBanner("info", "📹", "Camera active. Capture a classroom photo when ready.");
+            } catch (err) {
+              showFaceBanner("error", "❌", err.message || "Unable to start camera.");
+            }
+          });
+
+          captureCameraBtn.addEventListener("click", async () => {
+            try {
+              const canvas = document.createElement("canvas");
+              const photo = await capturePhoto(canvas);
+              faceCameraPreview.style.display = "none";
+              stopCamera();
+              faceFile = photo;
+              faceFileLabel.textContent = `${photo.name} (${fmtBytes(photo.size)})`;
+              faceFileLabel.style.display = "block";
+              faceUploadTitle.textContent = photo.name;
+              faceUploadSubtitle.textContent = `${fmtBytes(photo.size)} · Captured from camera`;
+              facePreviewImg.src = URL.createObjectURL(photo);
+              facePreviewImg.style.display = "block";
+              facePreviewPH.style.display  = "none";
+              captureCameraBtn.disabled = true;
+              retakeCameraBtn.style.display = "inline-flex";
+              updateFaceSubmitState();
+              showFaceBanner("success", "✅", "Photo captured. Ready to submit." );
+            } catch (err) {
+              showFaceBanner("error", "❌", err.message || "Unable to capture photo.");
+            }
+          });
+
+          retakeCameraBtn.addEventListener("click", () => {
+            clearFacePreview();
+            faceFile = null;
+            clearCapturedImage();
+            stopCamera();
+            captureCameraBtn.disabled = true;
+            retakeCameraBtn.style.display = "none";
+            openCameraBtn.disabled = false;
+            faceUploadTitle.textContent = "Click or drag classroom photo";
+            faceUploadSubtitle.textContent = "Full classroom image with all students visible";
+            updateFaceSubmitState();
           });
 
           faceSubmitBtn.addEventListener("click", () => {
@@ -1119,6 +1308,9 @@
           faceFileLabel.style.display = "block";
           faceUploadTitle.textContent   = file.name;
           faceUploadSubtitle.textContent = `${fmtBytes(file.size)} · Click to change`;
+          captureCameraBtn.disabled = true;
+          retakeCameraBtn.style.display = "none";
+          openCameraBtn.disabled = false;
 
           updateFaceSubmitState();
         }
@@ -1250,6 +1442,69 @@
             if (f) handleVoiceFile(f);
           });
 
+          startRecordingBtn.addEventListener("click", async () => {
+            try {
+              await startRecording();
+              recordingInProgress = true;
+              startRecordingBtn.disabled = true;
+              stopRecordingBtn.disabled = false;
+              playRecordingBtn.disabled = true;
+              voiceFile = null;
+              clearVoicePreview();
+              recordingStatus.textContent = "Recording…";
+              recordingStartTime = Date.now();
+              recordingTimerId = setInterval(() => {
+                const diff = Date.now() - recordingStartTime;
+                recordingTimer.textContent = formatTimer(diff);
+              }, 250);
+              showVoiceBanner("info", "🎤", "Recording audio. Speak clearly into the microphone.");
+            } catch (err) {
+              showVoiceBanner("error", "❌", err.message || "Unable to start recording.");
+            }
+          });
+
+          stopRecordingBtn.addEventListener("click", async () => {
+            try {
+              const audioFile = await stopRecording();
+              recordingInProgress = false;
+              clearInterval(recordingTimerId);
+              recordingTimerId = null;
+              recordingStatus.textContent = "Recording complete.";
+              startRecordingBtn.disabled = false;
+              stopRecordingBtn.disabled = true;
+              playRecordingBtn.disabled = false;
+              voiceFile = audioFile;
+              updateVoiceSubmitState();
+              voiceFileLabel.textContent = `${audioFile.name} (${fmtBytes(audioFile.size)})`;
+              voiceFileLabel.style.display = "block";
+              voiceUploadTitle.textContent = audioFile.name;
+              voiceUploadSubtitle.textContent = `${fmtBytes(audioFile.size)} · Recorded from microphone`;
+              voiceAudioPlayer.src = URL.createObjectURL(audioFile);
+              voicePreviewPH.style.display = "none";
+              voiceAudioPreviewWrap.style.display = "flex";
+              voiceAudioMeta.textContent = `${audioFile.name} · ${fmtBytes(audioFile.size)}`;
+              showVoiceBanner("success", "✅", "Audio recorded and ready to submit.");
+            } catch (err) {
+              recordingInProgress = false;
+              clearInterval(recordingTimerId);
+              recordingTimerId = null;
+              recordingStatus.textContent = "Recording stopped.";
+              startRecordingBtn.disabled = false;
+              stopRecordingBtn.disabled = true;
+              showVoiceBanner("error", "❌", err.message || "Unable to stop recording.");
+            }
+          });
+
+          playRecordingBtn.addEventListener("click", () => {
+            if (!voiceFile) return;
+            try {
+              const url = playRecording(voiceAudioPlayer);
+              voiceAudioPlayer.src = url;
+            } catch (err) {
+              showVoiceBanner("error", "❌", err.message || "Unable to play recording.");
+            }
+          });
+
           voiceSubmitBtn.addEventListener("click", () => {
             if (!voiceSubmitting) runVoiceCheckin();
           });
@@ -1284,6 +1539,10 @@
           voiceFileLabel.style.display = "block";
           voiceUploadTitle.textContent    = file.name;
           voiceUploadSubtitle.textContent = `${fmtBytes(file.size)} · Click to change`;
+          stopRecordingBtn.disabled = true;
+          startRecordingBtn.disabled = false;
+          playRecordingBtn.disabled = false;
+          recordingStatus.textContent = "Audio file ready.";
 
           updateVoiceSubmitState();
         }
@@ -1296,6 +1555,8 @@
           voiceFileLabel.style.display        = "none";
           voiceUploadTitle.textContent    = "Click or drag audio file";
           voiceUploadSubtitle.textContent = "Student voice recording for identification";
+          playRecordingBtn.disabled = true;
+          recordingStatus.textContent = "Ready to record";
         }
 
         async function runVoiceCheckin() {

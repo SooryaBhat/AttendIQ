@@ -530,6 +530,64 @@
     flex-direction: column;
   }
 
+  .camera-card,
+  .recording-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .camera-actions,
+  .recording-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1rem 0 0;
+  }
+
+  .camera-preview {
+    margin-top: 1rem;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #f7f9fe;
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+  }
+
+  .camera-preview video {
+    width: 100%;
+    min-height: 220px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .camera-status,
+  .recording-status-text {
+    display: block;
+    margin-top: 0.85rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .recording-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    color: var(--text);
+  }
+
+  .recording-timer {
+    font-family: "Courier New", monospace;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
   .table-wrapper {
     font-size: 0.9rem;
   }

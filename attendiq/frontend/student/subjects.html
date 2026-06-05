@@ -160,6 +160,46 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
     <script src="../assets/js/dashboard.js"></script>
-    <script src="../assets/js/subjects.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', initSubjectPage);
+      async function initSubjectPage(){
+        const token = localStorage.getItem('attendiq_token');
+        if(!token) return window.location.href='../auth/login.html';
+        let user; try{ user=await fetchCurrentUser(); localStorage.setItem('attendiq_user', JSON.stringify(user)); }catch(e){ localStorage.removeItem('attendiq_token'); return window.location.href='../auth/login.html'; }
+
+        bindUI();
+        await loadStudentSubjects(user.id);
+      }
+
+      function bindUI(){
+        document.getElementById('joinCodeButton')?.addEventListener('click', joinByCode);
+        document.getElementById('joinLinkButton')?.addEventListener('click', joinByLink);
+        document.getElementById('qrToggleButton')?.addEventListener('click', startQrScanner);
+      }
+
+      async function loadStudentSubjects(studentId){
+        try{
+          const subjects = await request(`/subjects/students/${studentId}`);
+          const tbody = document.getElementById('studentSubjectList');
+          tbody.innerHTML = subjects.length? subjects.map(s=>`<tr><td><strong>${escapeHtml(s.name)}</strong><div class="status-text">${escapeHtml(s.semester||'')}</div></td><td>${escapeHtml(s.code)}</td><td>${escapeHtml(s.faculty_id||'-')}</td><td><span class="status-pill active">Enrolled</span></td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">No enrolled subjects found.</td></tr>';
+        }catch(err){ console.error(err); const tbody=document.getElementById('studentSubjectList'); if(tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1rem; color:#c21f3c;">Failed to load subjects.</td></tr>' }
+      }
+
+      async function joinByCode(event){
+        event.preventDefault(); const code=document.getElementById('joinSubjectCode').value.trim(); if(!code) return alert('Enter subject code');
+        try{ const payload={ subject_code: code }; const s = await request('/subjects/join-by-code', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); alert('Joined ' + (s.name||s.code)); await loadStudentSubjects(JSON.parse(localStorage.getItem('attendiq_user')).id); }catch(err){ alert(err.message||'Failed to join by code'); }
+      }
+
+      async function joinByLink(event){ event.preventDefault(); const url=document.getElementById('joinSubjectLink').value.trim(); if(!url) return alert('Enter join link'); const m=url.match(/join\/([^\/\s]+)/i); if(!m) return alert('Invalid join link'); const code=m[1]; document.getElementById('joinSubjectCode').value = code; joinByCode(event); }
+
+      // QR scanner functions reuse existing helpers
+      let html5QrCode=null, qrScanning=false;
+      function scanSuccess(decodedText){ const match = decodedText.match(/join\/([^\/\s]+)/i); if(!match) return alert('Invalid QR'); document.getElementById('joinSubjectCode').value = match[1]; document.getElementById('qrScanStatus').textContent = 'QR scanned'; qrToggleButton.textContent='Start QR scan'; if(html5QrCode){ html5QrCode.stop(); qrScanning=false; } }
+      function scanError(){}
+      function startQrScanner(){ const reader=document.getElementById('qr-reader'); if(qrScanning){ html5QrCode?.stop(); qrScanning=false; document.getElementById('qrToggleButton').textContent='Start QR scan'; return; } html5QrCode = new Html5Qrcode('qr-reader'); html5QrCode.start({facingMode:'environment'},{fps:10,qrbox:250}, (decoded)=>{ scanSuccess(decoded); }, scanError).then(()=>{ qrScanning=true; document.getElementById('qrToggleButton').textContent='Stop scanning'; }).catch(()=> alert('Unable to start camera')); }
+
+      function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    </script>
   </body>
 </html>

@@ -29,6 +29,7 @@ def _build_session_response(row: dict) -> AttendanceSessionResponse:
         subject_id=row["subject_id"],
         faculty_id=row.get("faculty_id"),
         session_label=row.get("session_label"),
+        session_date=row.get("session_date"),
         started_at=row.get("started_at"),
         completed_at=row.get("completed_at"),
         status=row.get("status", "created"),
@@ -128,6 +129,20 @@ def end_session(session_id: str) -> AttendanceSessionResponse:
         raise ValueError("Session not found.")
 
     return _build_session_response(_get_session_row(session_id))
+
+
+def delete_session(session_id: str) -> dict:
+    session_id = str(session_id)
+    supabase.table("attendance_records").delete().eq("session_id", session_id).execute()
+    response = (
+        supabase.table("attendance_sessions")
+        .delete()
+        .eq("id", session_id)
+        .execute()
+    )
+    if not response.data:
+        raise ValueError("Session not found.")
+    return {"deleted": True}
 
 
 def list_sessions(subject_id: Optional[str] = None) -> List[AttendanceSessionResponse]:
@@ -389,3 +404,78 @@ def get_session_attendance(session_id: str) -> List[AttendanceRecordResponse]:
     )
     rows = resp.data or []
     return [_build_record_response(r) for r in rows]
+
+
+def get_student_history(student_id: str) -> List[dict]:
+    """Return attendance history for a given student (newest first).
+
+    Returns a list of dicts matching the frontend contract:
+    {
+      "attendance_id": "...",
+      "session_id": "...",
+      "session_name": "...",
+      "subject_name": "...",
+      "attendance_status": "present",
+      "method": "face",
+      "confidence": 0.95,
+      "marked_at": "...",
+      "session_date": "..."
+    }
+    """
+    student_id = str(student_id)
+    resp = (
+        supabase.table("attendance_records")
+        .select("*")
+        .eq("student_id", student_id)
+        .order("marked_at", desc=True)
+        .execute()
+    )
+    rows = resp.data or []
+    if not rows:
+        return []
+
+    # collect session ids
+    session_ids = list({r.get("session_id") for r in rows if r.get("session_id")})
+
+    sessions_map = {}
+    if session_ids:
+        sresp = (
+            supabase.table("attendance_sessions")
+            .select("id,session_label,session_date,subject_id")
+            .in_("id", session_ids)
+            .execute()
+        )
+        for s in (sresp.data or []):
+            sessions_map[s["id"]] = s
+
+    # collect subject ids from sessions
+    subject_ids = list({sessions_map[sid].get("subject_id") for sid in sessions_map if sessions_map[sid].get("subject_id")})
+    subjects_map = {}
+    if subject_ids:
+        subresp = (
+            supabase.table("subjects")
+            .select("id,name")
+            .in_("id", subject_ids)
+            .execute()
+        )
+        for sub in (subresp.data or []):
+            subjects_map[sub["id"]] = sub.get("name")
+
+    result = []
+    for r in rows:
+        sid = r.get("session_id")
+        session = sessions_map.get(sid) or {}
+        subject_name = subjects_map.get(session.get("subject_id")) if session else None
+        result.append({
+            "attendance_id": r.get("id"),
+            "session_id": sid,
+            "session_name": session.get("session_label"),
+            "subject_name": subject_name,
+            "attendance_status": r.get("status"),
+            "method": r.get("method"),
+            "confidence": float(r.get("confidence")) if r.get("confidence") is not None else None,
+            "marked_at": r.get("marked_at"),
+            "session_date": session.get("session_date"),
+        })
+
+    return result

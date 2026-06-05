@@ -13,6 +13,7 @@ from app.routes.faculty    import router as faculty_router
 from app.routes.subject    import router as subject_router
 from app.routes.attendance import router as attendance_router
 from app.routes.biometric  import router as biometric_router   # NEW
+from app.routes.super_admin import router as super_admin_router
 
 app = FastAPI(
     title="AttendIQ API",
@@ -35,6 +36,7 @@ app.include_router(faculty_router)
 app.include_router(subject_router)
 app.include_router(attendance_router)
 app.include_router(biometric_router)   # NEW
+app.include_router(super_admin_router)
 
 
 @app.get("/", tags=["root"])

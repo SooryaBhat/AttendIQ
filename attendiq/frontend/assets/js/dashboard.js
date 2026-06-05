@@ -12,18 +12,21 @@
 
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggle = document.getElementById("sidebarToggle");
+const topbarActions = document.querySelector(".topbar-actions");
 const userMenuToggle = document.querySelector(".user-menu-toggle");
 const userMenu = document.querySelector(".user-menu");
 const notificationButton = document.querySelector(".notification-button");
-const logoutLinks = document.querySelectorAll("a[href='#logout'], a[href='#signout'], .logout-link");
+const logoutLinks = document.querySelectorAll("a[href*='#logout'], a[href*='#signout'], .logout-link");
 const userNameElement = document.querySelector(".user-menu-toggle strong");
 const userSubtextElement = document.querySelector(".user-menu-toggle small");
+let sidebarBackdrop = null;
 
 function toggleSidebar() {
   if (!sidebar) return;
 
   if (window.innerWidth <= 1024) {
     sidebar.classList.toggle("sidebar-open");
+    updateBackdropState();
     return;
   }
 
@@ -35,6 +38,9 @@ function closeSidebarOnResize() {
   if (!sidebar) return;
   if (window.innerWidth > 1024) {
     sidebar.classList.remove("sidebar-open");
+    if (sidebarBackdrop) {
+      sidebarBackdrop.classList.remove("visible");
+    }
   }
 }
 
@@ -51,6 +57,46 @@ function closeUserMenu(event) {
   }
   userMenu.classList.remove("menu-open");
   userMenuToggle.setAttribute("aria-expanded", "false");
+}
+
+function createSidebarBackdrop() {
+  if (!sidebar || sidebarBackdrop) return;
+  sidebarBackdrop = document.createElement("div");
+  sidebarBackdrop.className = "sidebar-backdrop";
+  document.body.appendChild(sidebarBackdrop);
+  sidebarBackdrop.addEventListener("click", () => {
+    sidebar.classList.remove("sidebar-open");
+    sidebarBackdrop.classList.remove("visible");
+  });
+}
+
+function updateBackdropState() {
+  if (!sidebar || !sidebarBackdrop) return;
+  if (sidebar.classList.contains("sidebar-open")) {
+    sidebarBackdrop.classList.add("visible");
+  } else {
+    sidebarBackdrop.classList.remove("visible");
+  }
+}
+
+function ensureMobileSidebarButton() {
+  if (!sidebar || !topbarActions) return;
+
+  let mobileButton = document.getElementById("mobileMenuButton");
+  if (!mobileButton) {
+    mobileButton = document.createElement("button");
+    mobileButton.id = "mobileMenuButton";
+    mobileButton.type = "button";
+    mobileButton.className = "sidebar-open-button";
+    mobileButton.setAttribute("aria-label", "Open navigation");
+    mobileButton.innerHTML = "☰";
+    topbarActions.prepend(mobileButton);
+  }
+
+  mobileButton.addEventListener("click", () => {
+    toggleSidebar();
+    updateBackdropState();
+  });
 }
 
 function getStoredUser() {
@@ -91,6 +137,9 @@ function initDashboardLayout() {
   if (sidebarToggle) {
     sidebarToggle.addEventListener("click", toggleSidebar);
   }
+
+  ensureMobileSidebarButton();
+  createSidebarBackdrop();
 
   if (userMenuToggle) {
     userMenuToggle.addEventListener("click", toggleUserMenu);

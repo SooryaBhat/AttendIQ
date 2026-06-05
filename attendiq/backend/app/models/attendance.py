@@ -34,6 +34,7 @@ class AttendanceSessionResponse(BaseModel):
     subject_id: UUID
     faculty_id: Optional[UUID] = None
     session_label: str
+    session_date: Optional[date] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     status: str
@@ -93,6 +94,21 @@ class AttendanceFaceCheckinResponse(BaseModel):
     confidence: Optional[float] = None
     session_id: Optional[UUID] = None
     reason: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StudentAttendanceHistoryItem(BaseModel):
+    attendance_id: UUID
+    session_id: UUID
+    session_name: Optional[str] = None
+    subject_name: Optional[str] = None
+    attendance_status: Optional[str] = None
+    method: Optional[str] = None
+    confidence: Optional[float] = None
+    marked_at: Optional[datetime] = None
+    session_date: Optional[date] = None
 
     class Config:
         from_attributes = True

@@ -317,3 +317,93 @@ def login_user(payload: UserLogin) -> TokenResponse:
     )
 
     return TokenResponse(access_token=token, user=user)
+
+
+def _build_user_response(row: dict) -> UserResponse:
+    return UserResponse(
+        id=row["id"],
+        full_name=row["full_name"],
+        email=row["email"],
+        role=UserRole(row["role"]),
+        department_id=row.get("department_id"),
+        roll_number=row.get("roll_number"),
+        phone=row.get("phone"),
+        is_active=row.get("is_active", True),
+        face_enrolled=row.get("face_enrolled", False),
+        voice_enrolled=row.get("voice_enrolled", False),
+    )
+
+
+def list_users_by_role(
+    role: UserRole,
+    department_id: Optional[str] = None,
+    search: Optional[str] = None,
+) -> list[UserResponse]:
+    query = supabase.table("profiles").select("*").eq("role", role.value)
+    if department_id:
+        query = query.eq("department_id", department_id)
+
+    response = query.execute()
+    rows = response.data or []
+
+    if search:
+        value = search.strip().lower()
+        rows = [
+            r for r in rows
+            if value in str(r.get("full_name", "")).lower()
+            or value in str(r.get("email", "")).lower()
+            or value in str(r.get("phone", "")).lower()
+        ]
+
+    return [_build_user_response(r) for r in rows]
+
+
+def get_user(user_id: str, role: Optional[UserRole] = None) -> UserResponse:
+    query = supabase.table("profiles").select("*").eq("id", user_id)
+    if role:
+        query = query.eq("role", role.value)
+
+    response = query.single().execute()
+    if not response.data:
+        raise ValueError("User not found.")
+
+    return _build_user_response(response.data)
+
+
+def update_user(user_id: str, update_data: dict) -> UserResponse:
+    data = update_data.copy()
+
+    if "password" in data:
+        data["password_hash"] = hash_password(data.pop("password"))
+
+    if data.get("department_id") is not None:
+        data["department_id"] = str(data["department_id"])
+
+    if not data:
+        raise ValueError("No update fields were provided.")
+
+    response = (
+        supabase.table("profiles")
+        .update(data)
+        .eq("id", user_id)
+        .execute()
+    )
+
+    if not response.data:
+        raise ValueError("User not found.")
+
+    return get_user(user_id)
+
+
+def delete_user(user_id: str) -> None:
+    check = (
+        supabase.table("profiles")
+        .select("id")
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    if not check.data:
+        raise ValueError("User not found.")
+
+    supabase.table("profiles").delete().eq("id", user_id).execute()

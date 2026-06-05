@@ -146,6 +146,46 @@ a {
   cursor: pointer;
 }
 
+.sidebar-open-button {
+  display: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  border: none;
+  background: #f1f5fb;
+  color: #102a43;
+  cursor: pointer;
+  place-items: center;
+  font-size: 1.15rem;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 42, 67, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  z-index: 15;
+}
+
+.sidebar-backdrop.visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.table-card {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-card table {
+  width: 100%;
+  min-width: 560px;
+}
+
 .topbar {
   grid-area: topbar;
   display: flex;
@@ -340,6 +380,10 @@ a {
 
   .dashboard-content {
     padding: 1.5rem 1rem;
+  }
+
+  .sidebar-open-button {
+    display: inline-grid;
   }
 }
 

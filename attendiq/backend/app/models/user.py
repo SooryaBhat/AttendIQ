@@ -94,6 +94,13 @@ class UserRegister(BaseModel):
             }
         }
 
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    department_id: Optional[UUID] = None
+    phone: Optional[str] = None
+    is_active: Optional[bool] = None
 
 # ============================================================
 #  RESPONSE MODELS

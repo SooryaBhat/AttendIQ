@@ -1,1 +1,262 @@
-<!-- Personal attendance records (placeholder) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Attendance History</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/attendance.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Student</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="attendance_history.html" class="active">
+            <span class="nav-icon">📜</span>
+            <span>Attendance History</span>
+          </a>
+          <a href="register_face.html">
+            <span class="nav-icon">📷</span>
+            <span>Register Face</span>
+          </a>
+          <a href="register_voice.html">
+            <span class="nav-icon">🎙️</span>
+            <span>Register Voice</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">History
+          <br />Review past attendance records</div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Attendance History</h1>
+            <p>View your attendance records and export results.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Student</strong>
+                <small>Active learner</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>My attendance</h2>
+            <p>Filters and export your attendance records.</p>
+          </div>
+        </section>
+
+        <div class="card-grid" style="margin-bottom:1rem;">
+          <article class="card">
+            <h3>Overall Attendance %</h3>
+            <p id="statOverallPercent" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Total Sessions</h3>
+            <p id="statTotalSessions" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Present</h3>
+            <p id="statPresent" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Absent</h3>
+            <p id="statAbsent" class="metric-value">—</p>
+          </article>
+        </div>
+
+        <div class="panel">
+          <div class="panel-actions" style="display:flex; gap:0.5rem; align-items:center; margin-bottom:1rem;">
+            <select id="filterSubject" class="input" style="width:260px;"><option value="">All subjects</option></select>
+            <input id="filterFrom" type="date" class="input" />
+            <input id="filterTo" type="date" class="input" />
+            <input id="searchInput" placeholder="Search" class="input" style="flex:1;" />
+            <button id="exportCsv" class="btn">Export CSV</button>
+          </div>
+
+          <div id="historyLoading" style="display:none; padding:1rem;">Loading history…</div>
+          <div id="historyError" style="display:none; padding:1rem; color:var(--danger);">Failed to load history.</div>
+
+          <div class="table-wrapper">
+            <table class="attendance-history-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Subject</th>
+                  <th>Session</th>
+                  <th>Faculty</th>
+                  <th>Status</th>
+                  <th>Method</th>
+                  <th>Marked Time</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <div id="pagination" style="margin-top:1rem; display:flex; gap:.5rem; align-items:center; justify-content:center;"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', initHistoryPage);
+
+      async function initHistoryPage(){
+        const token = localStorage.getItem('attendiq_token');
+        if(!token) return window.location.href='../auth/login.html';
+        try{
+          const user = await fetchCurrentUser();
+          localStorage.setItem('attendiq_user', JSON.stringify(user));
+        }catch(e){ localStorage.removeItem('attendiq_token'); return window.location.href='../auth/login.html'; }
+
+        bindUI();
+        await loadFilters();
+        await refreshHistory();
+      }
+
+      function bindUI(){
+        document.getElementById('filterSubject').addEventListener('change', ()=> refreshHistory(1));
+        document.getElementById('searchInput').addEventListener('input', debounce(()=> refreshHistory(1), 300));
+        document.getElementById('exportCsv').addEventListener('click', exportCsv);
+        // status filter (created dynamically)
+      }
+
+      async function loadFilters(){
+        try{
+          const user = JSON.parse(localStorage.getItem('attendiq_user'));
+          const subjects = await request(`/subjects/students/${user.id}`);
+          const sel = document.getElementById('filterSubject');
+          sel.innerHTML = '<option value="">All subjects</option>' + subjects.map(s=>`<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.code||'')})</option>`).join('');
+
+          // Add status filter
+          const statusWrapper = document.createElement('select');
+          statusWrapper.id = 'filterStatus';
+          statusWrapper.className = 'input';
+          statusWrapper.style.width = '160px';
+          statusWrapper.innerHTML = '<option value="">All statuses</option><option value="present">Present</option><option value="absent">Absent</option>';
+          document.querySelector('.panel-actions').insertBefore(statusWrapper, document.getElementById('searchInput'));
+          statusWrapper.addEventListener('change', ()=> refreshHistory(1));
+        }catch(err){ console.error(err); }
+      }
+
+      async function refreshHistory(page=1){
+        const loading = document.getElementById('historyLoading');
+        const errEl = document.getElementById('historyError');
+        const tbody = document.getElementById('historyTableBody');
+        loading.style.display = 'block'; errEl.style.display = 'none'; tbody.innerHTML = '';
+
+        try{
+          const data = await getStudentAttendanceHistory();
+
+          if(!Array.isArray(data)) throw new Error('Invalid response from server');
+
+          // filters
+          const subjFilter = document.getElementById('filterSubject').value;
+          const statusFilter = (document.getElementById('filterStatus') || {}).value || '';
+          const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+          let items = data.slice(); // already newest-first from backend
+
+          if(subjFilter) items = items.filter(i=> i.subject_name && i.subject_name_id ? i.subject_name_id === subjFilter : (i.subject_name && i.subject_name.includes(subjFilter)) );
+          // Our backend returns subject_name but not subject id — we used subject_name_id checks defensively
+          if(statusFilter) items = items.filter(i=> (i.attendance_status||'').toLowerCase() === statusFilter.toLowerCase());
+          if(q) items = items.filter(i=> (i.session_name||'').toLowerCase().includes(q) || (i.subject_name||'').toLowerCase().includes(q) || (i.attendance_status||'').toLowerCase().includes(q));
+
+          // stats
+          const total = data.length;
+          const present = data.filter(d=> (d.attendance_status||'').toLowerCase() === 'present').length;
+          const absent = data.filter(d=> (d.attendance_status||'').toLowerCase() === 'absent').length;
+          const percent = (present+absent) ? Math.round((present/(present+absent))*100) : 0;
+
+          document.getElementById('statOverallPercent').textContent = percent + '%';
+          document.getElementById('statTotalSessions').textContent = total;
+          document.getElementById('statPresent').textContent = present;
+          document.getElementById('statAbsent').textContent = absent;
+
+          // pagination
+          const perPage = 12; const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+          page = Math.min(page, totalPages);
+          const start = (page-1)*perPage; const pageItems = items.slice(start, start+perPage);
+
+          if(pageItems.length === 0){
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#64748b;">No records found.</td></tr>';
+          } else {
+            tbody.innerHTML = pageItems.map(it=> `<tr>
+              <td>${escapeHtml(it.session_date||it.marked_at||'-')}</td>
+              <td>${escapeHtml(it.subject_name||'-')}</td>
+              <td>${escapeHtml(it.session_name||'-')}</td>
+              <td><span class="status-pill ${((it.attendance_status||'').toLowerCase()==='present')?'present':'absent'}">${escapeHtml(it.attendance_status||'-')}</span></td>
+              <td>${escapeHtml(it.method||'-')}</td>
+              <td>${it.confidence!=null? Number(it.confidence).toFixed(2): '-'}</td>
+              <td>${it.marked_at? new Date(it.marked_at).toLocaleString() : '-'}</td>
+            </tr>`).join('');
+          }
+
+          renderPagination(totalPages, page);
+          loading.style.display = 'none';
+        }catch(err){ loading.style.display = 'none'; errEl.style.display = 'block'; errEl.textContent = err.message || 'Failed to load history.'; console.error(err); }
+      }
+
+      function renderPagination(totalPages, current){
+        const p = document.getElementById('pagination'); p.innerHTML = '';
+        for(let i=1;i<=totalPages;i++){ const btn = document.createElement('button'); btn.textContent = i; btn.className='btn'; if(i===current) btn.disabled=true; btn.addEventListener('click', ()=> refreshHistory(i)); p.appendChild(btn); }
+      }
+
+      function exportCsv(){
+        const rows = Array.from(document.querySelectorAll('#historyTableBody tr')).map(tr=> Array.from(tr.children).map(td=>td.textContent.trim()));
+        if(rows.length===0) return alert('No data to export');
+        const csv = rows.map(r=> r.map(c=>`"${c.replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], {type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='attendance_history.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      }
+
+      function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
+      function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    </script>
+  </body>
+</html>

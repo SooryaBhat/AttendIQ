@@ -1,1 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Attendance Reports</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/attendance.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Faculty</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="sessions.html">
+            <span class="nav-icon">🗓️</span>
+            <span>Sessions</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="attendance_report.html" class="active">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">Reports
+          <br />Export attendance data</div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Attendance Reports</h1>
+            <p>Analyze attendance records and export results.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Faculty User</strong>
+                <small>Instructor</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Attendance Reports</h2>
+            <p>View and export attendance records for your sessions.</p>
+          </div>
+        </section>
+
+        <div class="card-grid" style="margin-bottom:1rem;">
+          <article class="card">
+            <h3>Total Attendance Records</h3>
+            <p id="statTotalRecords" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Present</h3>
+            <p id="statPresent" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Absent</h3>
+            <p id="statAbsent" class="metric-value">—</p>
+          </article>
+          <article class="card">
+            <h3>Attendance %</h3>
+            <p id="statPercent" class="metric-value">—</p>
+          </article>
+        </div>
+
+        <div class="panel">
+          <div class="panel-actions" style="display:flex; gap:0.5rem; align-items:center; margin-bottom:1rem;">
+            <select id="reportSession" class="input" style="width:300px;"><option value="">Select session</option></select>
+            <select id="reportSubject" class="input" style="width:220px;"><option value="">All subjects</option></select>
+            <input id="reportDate" type="date" class="input" />
+            <input id="searchStudent" placeholder="Search student" class="input" style="flex:1;" />
+            <button id="exportCsv" class="btn">Export CSV</button>
+          </div>
+
+          <div id="reportLoading" style="display:none; padding:1rem;">Loading records…</div>
+          <div id="reportError" style="display:none; padding:1rem; color:var(--danger);">Failed to load records.</div>
+
+          <div class="table-wrapper">
+            <table class="attendance-history-table">
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th>Roll Number</th>
+                  <th>Subject</th>
+                  <th>Session</th>
+                  <th>Status</th>
+                  <th>Method</th>
+                  <th>Confidence</th>
+                  <th>Marked Time</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTableBody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => initReportPage());
+
+      async function initReportPage(){
+        const token = localStorage.getItem('attendiq_token');
+        if(!token) return window.location.href = '../auth/login.html';
+        try{ await fetchCurrentUser(); }catch(e){ localStorage.removeItem('attendiq_token'); localStorage.removeItem('attendiq_user'); return window.location.href='../auth/login.html'; }
+
+        bindUI();
+        await loadSessionsAndSubjects();
+        await refreshReport();
+      }
+
+      function bindUI(){
+        document.getElementById('reportSession').addEventListener('change', refreshReport);
+        document.getElementById('reportSubject').addEventListener('change', refreshReport);
+        document.getElementById('reportDate').addEventListener('change', refreshReport);
+        document.getElementById('searchStudent').addEventListener('input', debounce(refreshReport,300));
+        document.getElementById('exportCsv').addEventListener('click', exportCsv);
+      }
+
+      async function loadSessionsAndSubjects(){
+        try{
+          const [sessions, subjects] = await Promise.all([getAttendanceSessions(), getSubjects()]);
+          const sessionSel = document.getElementById('reportSession');
+          sessionSel.innerHTML = '<option value="">Select session</option>' + sessions.map(s=>`<option value="${s.id}">${escapeHtml(s.session_label||s.session_name||s.id)}</option>`).join('');
+          const subjectSel = document.getElementById('reportSubject');
+          subjectSel.innerHTML = '<option value="">All subjects</option>' + subjects.map(s=>`<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.code)})</option>`).join('');
+        }catch(err){ console.error(err); }
+      }
+
+      async function refreshReport(){
+        const loading=document.getElementById('reportLoading'); const errorEl=document.getElementById('reportError'); const tbody=document.getElementById('attendanceTableBody');
+        loading.style.display='block'; errorEl.style.display='none'; tbody.innerHTML='';
+        try{
+          const sessionId=document.getElementById('reportSession').value; if(!sessionId){ loading.style.display='none'; tbody.innerHTML='<tr><td colspan="8" style="text-align:center; padding:2rem; color:#64748b;">Select a session to view records.</td></tr>'; return; }
+          const records = await getSessionAttendanceRecords(sessionId);
+          const subjectFilter=document.getElementById('reportSubject').value;
+          const dateFilter=document.getElementById('reportDate').value;
+          const q=document.getElementById('searchStudent').value.trim().toLowerCase();
+          const filtered = records.filter(r=> (!subjectFilter || (r.subject_id===subjectFilter)) && (!dateFilter || (r.marked_at||'').startsWith(dateFilter)) && (!q || (r.student_name||'').toLowerCase().includes(q) || (r.student_id||'').toLowerCase().includes(q)));
+
+          renderReportStats(filtered);
+          renderReportTable(filtered);
+          loading.style.display='none';
+        }catch(err){ loading.style.display='none'; errorEl.style.display='block'; errorEl.textContent=err.message||'Failed to load records.'; }
+      }
+
+      function renderReportStats(records){
+        const total=records.length; const present=records.filter(r=>r.status==='present' || r.attendance_status==='present').length; const absent=records.filter(r=>r.status==='absent' || r.attendance_status==='absent').length; const percent = total? Math.round((present/total)*100):0;
+        document.getElementById('statTotalRecords').textContent = total;
+        document.getElementById('statPresent').textContent = present;
+        document.getElementById('statAbsent').textContent = absent;
+        document.getElementById('statPercent').textContent = percent + '%';
+      }
+
+      function renderReportTable(records){
+        const tbody=document.getElementById('attendanceTableBody');
+        if(!records || records.length===0){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center; padding:2rem; color:#64748b;">No attendance records found.</td></tr>'; return; }
+        tbody.innerHTML = records.map(r=>`<tr><td>${escapeHtml(r.student_name||r.student_id||'-')}</td><td>${escapeHtml(r.student_id||'-')}</td><td>${escapeHtml(r.subject_name||r.subject_id||'-')}</td><td>${escapeHtml(r.session_label||r.session_name||r.session_id||'-')}</td><td>${escapeHtml(r.status||r.attendance_status||'-')}</td><td>${escapeHtml(r.method||r.checkin_method||'-')}</td><td>${r.confidence!=null?escapeHtml(String(r.confidence)): '-'}</td><td>${r.marked_at?new Date(r.marked_at).toLocaleString():'-'}</td></tr>`).join('');
+      }
+
+      function exportCsv(){
+        const tbody=document.getElementById('attendanceTableBody');
+        const rows = Array.from(tbody.querySelectorAll('tr')).map(tr=>Array.from(tr.children).map(td=>td.textContent.trim()));
+        if(rows.length===0) return alert('No data to export');
+        const csv = rows.map(r=> r.map(c=>`"${c.replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], {type:'text/csv'});
+        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='attendance_report.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      }
+
+      function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),wait); }; }
+      function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    </script>
+  </body>
+</html>
 <!-- View attendance by session/student (placeholder) -->

@@ -1,1 +1,168 @@
-<!-- Add/view/delete dept admins (placeholder) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Department Admins</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Super Admin</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="departments.html">
+            <span class="nav-icon">🏢</span>
+            <span>Departments</span>
+          </a>
+          <a href="admins.html" class="active">
+            <span class="nav-icon">👤</span>
+            <span>Department Admins</span>
+          </a>
+          <a href="reports.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Manage department admins
+            <br />
+            Create, edit, activate, or remove accounts.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Department Admin Management</h1>
+            <p>Manage department-level administrators across the institution.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Super Admin</strong>
+                <small>Manage admin access</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content subjects-page">
+        <section class="page-heading">
+          <div>
+            <h2>Department Admins</h2>
+            <p>Register and manage users with department administrator privileges.</p>
+          </div>
+        </section>
+
+        <div class="subjects-container">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Create or update admin</h2>
+                <p>Assign a user to a department and configure account details.</p>
+              </div>
+            </div>
+
+            <form id="adminForm" class="form-grid">
+              <div class="form-row">
+                <label for="adminName">Full name</label>
+                <input id="adminName" name="adminName" type="text" placeholder="e.g. Priya Singh" required />
+              </div>
+              <div class="form-row">
+                <label for="adminEmail">Email address</label>
+                <input id="adminEmail" name="adminEmail" type="email" placeholder="admin@college.edu" required />
+              </div>
+              <div class="form-row">
+                <label for="adminDepartment">Department</label>
+                <select id="adminDepartment" name="adminDepartment" required>
+                  <option value="">Select department</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="adminPhone">Phone</label>
+                <input id="adminPhone" name="adminPhone" type="tel" placeholder="Optional phone number" />
+              </div>
+              <div class="form-row">
+                <label for="adminPassword">Password</label>
+                <input id="adminPassword" name="adminPassword" type="password" placeholder="Create a password" />
+              </div>
+              <div class="form-row admin-status-row">
+                <label for="adminActive">Active account</label>
+                <input id="adminActive" name="adminActive" type="checkbox" checked />
+              </div>
+              <div class="form-row">
+                <label>&nbsp;</label>
+                <div class="form-actions">
+                  <button id="adminSubmitButton" class="btn btn-primary" type="submit">Create admin</button>
+                  <button id="adminResetButton" class="btn btn-outline" type="button">Reset</button>
+                </div>
+              </div>
+            </form>
+            <p id="adminStatusMessage" class="status-text" style="margin-top: 0.75rem;">Ready to add a new department admin.</p>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Admin list</h2>
+                <p>View current department admins and take action on their accounts.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="subject-table subject-table-rich">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/super_admin_admins.js"></script>
+  </body>
+</html>

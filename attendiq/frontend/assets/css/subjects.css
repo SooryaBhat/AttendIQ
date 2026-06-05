@@ -219,6 +219,23 @@
   margin-bottom: 1rem;
 }
 
+@media (max-width: 900px) {
+  .form-grid,
+  .subjects-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel,
+  .modal {
+    padding: 1.25rem;
+  }
+}
+
 .modal-header h3 {
   margin: 0;
   font-size: 1.35rem;

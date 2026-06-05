@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Super Admin Reports</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <style>
+      .reports-grid { display:grid; grid-template-columns: repeat(3, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+      .report-card { background:var(--card-bg); border-radius:12px; padding:1rem; box-shadow:var(--card-shadow); }
+      .report-card h3 { margin:0 0 0.5rem; color:var(--muted); }
+      .report-card .metric { font-size:2rem; font-weight:700; margin-top:0.5rem; }
+      .chart-row { display:grid; grid-template-columns: 2fr 1fr; gap:1rem; }
+      @media (max-width: 900px) { .reports-grid, .chart-row { grid-template-columns: 1fr; } }
+      .table-card { padding:1rem; border-radius:12px; background:var(--card-bg); box-shadow:var(--card-shadow); }
+      .table-card table { width:100%; border-collapse:collapse; }
+      .table-card th, .table-card td { padding:0.75rem 0.5rem; border-bottom:1px solid var(--border); text-align:left; }
+      .table-card tbody tr:last-child td { border-bottom:none; }
+      .chart-title { margin:0 0 0.75rem; font-size:1rem; color:var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Super Admin</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="departments.html">
+            <span class="nav-icon">🏢</span>
+            <span>Departments</span>
+          </a>
+          <a href="admins.html">
+            <span class="nav-icon">👤</span>
+            <span>Department Admins</span>
+          </a>
+          <a href="reports.html" class="active">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            ⇆
+          </button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Reports and analytics
+            <br />
+            Department summaries and totals.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Reports</h1>
+            <p>Institution-wide metrics and departmental summaries.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">
+            🔔
+          </button>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Super Admin Reports</h2>
+            <p>Analyze enrollments, staffing, and attendance coverage by department.</p>
+          </div>
+        </section>
+
+        <div class="reports-grid">
+          <div class="report-card">
+            <h3>Departments</h3>
+            <div id="reportDepartments" class="metric">—</div>
+          </div>
+          <div class="report-card">
+            <h3>Department Admins</h3>
+            <div id="reportAdmins" class="metric">—</div>
+          </div>
+          <div class="report-card">
+            <h3>Faculty</h3>
+            <div id="reportFaculty" class="metric">—</div>
+          </div>
+          <div class="report-card">
+            <h3>Students</h3>
+            <div id="reportStudents" class="metric">—</div>
+          </div>
+          <div class="report-card">
+            <h3>Subjects</h3>
+            <div id="reportSubjects" class="metric">—</div>
+          </div>
+          <div class="report-card">
+            <h3>Attendance Sessions</h3>
+            <div id="reportSessions" class="metric">—</div>
+          </div>
+        </div>
+
+        <div class="chart-row">
+          <div class="report-card">
+            <h4 class="chart-title">Students by Department</h4>
+            <canvas id="studentsByDeptChart" height="240"></canvas>
+          </div>
+          <div class="report-card">
+            <h4 class="chart-title">Departments Summary</h4>
+            <div class="table-card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Department</th>
+                    <th>Admins</th>
+                    <th>Students</th>
+                    <th>Faculty</th>
+                  </tr>
+                </thead>
+                <tbody id="departmentStatsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/super_admin_reports.js"></script>
+  </body>
+</html>

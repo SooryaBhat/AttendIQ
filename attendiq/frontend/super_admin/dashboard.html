@@ -26,17 +26,13 @@
             <span class="nav-icon">🏢</span>
             <span>Departments</span>
           </a>
-          <a href="#department-admins">
+          <a href="admins.html">
             <span class="nav-icon">👤</span>
             <span>Department Admins</span>
           </a>
-          <a href="#reports">
+          <a href="reports.html">
             <span class="nav-icon">📊</span>
             <span>Reports</span>
-          </a>
-          <a href="#settings">
-            <span class="nav-icon">⚙️</span>
-            <span>Settings</span>
           </a>
         </nav>
 
@@ -93,26 +89,39 @@
         <div class="card-grid">
           <article class="card">
             <h3>Total Departments</h3>
-            <p class="metric-value">12</p>
+            <p id="cardTotalDepartments" class="metric-value">—</p>
             <p>All active academic and administrative units.</p>
           </article>
 
           <article class="card">
+            <h3>Department Admins</h3>
+            <p id="cardDepartmentAdmins" class="metric-value">—</p>
+            <p>Users with access to manage individual departments.</p>
+          </article>
+
+          <article class="card">
             <h3>Total Faculty</h3>
-            <p class="metric-value">218</p>
+            <p id="cardTotalFaculty" class="metric-value">—</p>
             <p>Registered faculty members across departments.</p>
           </article>
 
           <article class="card">
             <h3>Total Students</h3>
-            <p class="metric-value">4,820</p>
+            <p id="cardTotalStudents" class="metric-value">—</p>
             <p>Enrolled students across the institution.</p>
           </article>
+        </div>
 
+        <div class="card-grid" style="margin-top: 1.5rem;">
           <article class="card">
-            <h3>Attendance Today</h3>
-            <p class="metric-value">93%</p>
-            <p>Current average attendance status across all sessions.</p>
+            <h3>Total Subjects</h3>
+            <p id="cardTotalSubjects" class="metric-value">—</p>
+            <p>Subjects configured for attendance and enrollment.</p>
+          </article>
+          <article class="card">
+            <h3>Attendance Sessions</h3>
+            <p id="cardAttendanceSessions" class="metric-value">—</p>
+            <p>Recorded attendance sessions in the system.</p>
           </article>
         </div>
 
@@ -129,7 +138,9 @@
       </main>
     </div>
 
+    <script src="../assets/js/api.js"></script>
     <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/super_admin_dashboard.js"></script>
   </body>
 </html>
 

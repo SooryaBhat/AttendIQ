@@ -102,6 +102,71 @@ async function deleteDepartment(id) {
   });
 }
 
+async function getDepartmentAdmins(search, departmentId) {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (departmentId) params.set("department_id", departmentId);
+  return request(`/super-admin/admins${params.toString() ? `?${params.toString()}` : ""}`);
+}
+
+async function getDepartmentAdminById(id) {
+  return request(`/super-admin/admins/${id}`);
+}
+
+async function createDepartmentAdmin(payload) {
+  return request("/super-admin/admins", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function updateDepartmentAdmin(id, payload) {
+  return request(`/super-admin/admins/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function activateDepartmentAdmin(id) {
+  return request(`/super-admin/admins/${id}/activate`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+}
+
+async function deactivateDepartmentAdmin(id) {
+  return request(`/super-admin/admins/${id}/deactivate`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+}
+
+async function deleteDepartmentAdmin(id) {
+  return request(`/super-admin/admins/${id}`, {
+    method: "DELETE",
+  });
+}
+
+async function getSuperAdminSummary() {
+  return request("/super-admin/summary");
+}
+
+async function getSuperAdminDepartmentStats() {
+  return request("/super-admin/department-stats");
+}
+
 async function getStudents(search, departmentId) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
@@ -177,6 +242,14 @@ async function deleteFaculty(id) {
   });
 }
 
+async function getSubjects() {
+  return request("/subjects");
+}
+
+async function getSubjectById(id) {
+  return request(`/subjects/${id}`);
+}
+
 // ============================================================================
 // ATTENDANCE API FUNCTIONS
 // ============================================================================
@@ -222,6 +295,12 @@ async function endAttendanceSession(sessionId) {
   });
 }
 
+async function deleteAttendanceSession(sessionId) {
+  return request(`/attendance/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+}
+
 async function markAttendance(sessionId, studentId, attendanceStatus) {
   return request("/attendance/mark", {
     method: "POST",
@@ -238,4 +317,8 @@ async function markAttendance(sessionId, studentId, attendanceStatus) {
 
 async function getSessionAttendanceRecords(sessionId) {
   return request(`/attendance/sessions/${sessionId}/records`);
+}
+
+async function getStudentAttendanceHistory() {
+  return request("/attendance/student-history");
 }

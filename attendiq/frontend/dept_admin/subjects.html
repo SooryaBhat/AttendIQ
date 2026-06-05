@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Subject Management</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <link rel="stylesheet" href="../assets/css/subjects.css" />
+    <style>
+      .controls-row {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(220px, 1fr) auto;
+        gap: 1rem;
+        align-items: end;
+        margin-bottom: 1.5rem;
+      }
+      .controls-row .input-group {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .status-banner {
+        margin-bottom: 1rem;
+      }
+      .table-empty {
+        text-align: center;
+        color: #52637a;
+        padding: 2rem 0;
+      }
+      .subject-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .subject-actions button {
+        border: 1px solid rgba(16, 42, 67, 0.12);
+        background: #ffffff;
+        padding: 0.55rem 0.9rem;
+        border-radius: 12px;
+        color: #102a43;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .subject-actions button:hover {
+        background: #f1f5fb;
+      }
+      .subject-actions .edit-button {
+        color: #0f4bb2;
+      }
+      .subject-actions .delete-button {
+        color: #c21f3c;
+      }
+      .filter-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .card-grid.stats-grid {
+        grid-template-columns: repeat(4, minmax(220px, 1fr));
+      }
+      .status-pill.pending { color: #334e68; background: #eef4ff; }
+      @media (max-width: 980px) {
+        .controls-row { grid-template-columns: 1fr; }
+        .card-grid.stats-grid { grid-template-columns: 1fr 1fr; }
+      }
+      @media (max-width: 640px) {
+        .card-grid.stats-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">AIQ</div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Dept Admin</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="students.html">
+            <span class="nav-icon">🎓</span>
+            <span>Students</span>
+          </a>
+          <a href="faculty.html">
+            <span class="nav-icon">👨‍🏫</span>
+            <span>Faculty</span>
+          </a>
+          <a href="subjects.html" class="active">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="reports.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Department administration<br />Manage subjects across faculties.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Subject Management</h1>
+            <p>Manage subjects, assign faculty, and keep department records in sync.</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong id="topbarUserName">Department Admin</strong>
+                <small id="topbarUserRole">Department admin</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="#profile">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout" id="logoutButton">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Subject Management</h2>
+            <p>Search, filter, and maintain subject records connected to the backend.</p>
+          </div>
+          <div>
+            <button id="openAddSubject" class="button button-primary">Add Subject</button>
+          </div>
+        </section>
+
+        <div id="pageStatus" class="alert-box status-banner" style="display:none"></div>
+
+        <div class="card-grid stats-grid" style="margin-bottom: 1.5rem;">
+          <article class="stat-card">
+            <div class="stat-card-icon">📚</div>
+            <div class="stat-card-label">Total Subjects</div>
+            <div class="stat-card-value" id="statTotalSubjects"><span class="loading-pulse"></span></div>
+            <div class="stat-card-sub">All subjects in the system</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-card-icon">✅</div>
+            <div class="stat-card-label">Active Subjects</div>
+            <div class="stat-card-value" id="statActiveSubjects"><span class="loading-pulse"></span></div>
+            <div class="stat-card-sub">Subjects assigned to department and faculty</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-card-icon">👨‍🏫</div>
+            <div class="stat-card-label">Total Faculties Assigned</div>
+            <div class="stat-card-value" id="statAssignedFaculty"><span class="loading-pulse"></span></div>
+            <div class="stat-card-sub">Unique faculty members linked to subjects</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-card-icon">🏛️</div>
+            <div class="stat-card-label">Total Departments</div>
+            <div class="stat-card-value" id="statTotalDepartments"><span class="loading-pulse"></span></div>
+            <div class="stat-card-sub">Departments referenced by subjects</div>
+          </article>
+        </div>
+
+        <section class="panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 1rem; align-items: center;">
+            <div>
+              <h2>Subject records</h2>
+              <p>Search by name or code, then filter by department or faculty.</p>
+            </div>
+          </div>
+
+          <div class="controls-row">
+            <div class="input-group">
+              <label for="searchInput">Search</label>
+              <input id="searchInput" type="search" placeholder="Search subject name or code" />
+            </div>
+            <div class="input-group">
+              <label for="departmentFilter">Department</label>
+              <select id="departmentFilter">
+                <option value="">All departments</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="facultyFilter">Faculty</label>
+              <select id="facultyFilter">
+                <option value="">All faculty</option>
+              </select>
+            </div>
+            <div class="filter-actions">
+              <button id="clearFilters" type="button" class="button button-secondary">Clear filters</button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="subject-table subject-table-rich">
+              <thead>
+                <tr>
+                  <th>Subject Code</th>
+                  <th>Subject Name</th>
+                  <th>Department</th>
+                  <th>Assigned Faculty</th>
+                  <th>Credits</th>
+                  <th>Semester</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="subjectsTableBody">
+                <tr>
+                  <td colspan="8" class="table-empty">Loading subjects…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="subjectModalOverlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <h3 id="subjectModalTitle">Add Subject</h3>
+            <p id="subjectModalDescription" style="margin:0.5rem 0 0; color:#52637a; font-size:0.95rem;">Enter subject details and save.</p>
+          </div>
+          <button id="closeSubjectModal" class="button button-outline" type="button">Close</button>
+        </div>
+
+        <form id="subjectModalForm" class="form-grid">
+          <div class="form-row">
+            <label for="subjectCode">Subject Code</label>
+            <input id="subjectCode" name="subjectCode" type="text" placeholder="e.g. MAT-101" required />
+          </div>
+          <div class="form-row">
+            <label for="subjectName">Subject Name</label>
+            <input id="subjectName" name="subjectName" type="text" placeholder="e.g. Calculus I" required />
+          </div>
+          <div class="form-row">
+            <label for="modalDepartment">Department</label>
+            <select id="modalDepartment" name="modalDepartment" required>
+              <option value="">Select department</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="modalFaculty">Faculty</label>
+            <select id="modalFaculty" name="modalFaculty">
+              <option value="">Select faculty</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="subjectCredits">Credits</label>
+            <input id="subjectCredits" name="subjectCredits" type="number" min="0" step="1" value="3" required />
+          </div>
+          <div class="form-row">
+            <label for="subjectSemester">Semester</label>
+            <input id="subjectSemester" name="subjectSemester" type="number" min="1" step="1" value="1" required />
+          </div>
+          <div class="form-row" style="grid-column: 1 / -1; display:flex; justify-content:flex-end; gap:0.75rem; align-items:center; margin-top:0.25rem;">
+            <button id="cancelSubjectModal" type="button" class="button button-secondary">Cancel</button>
+            <button type="submit" class="button button-primary" id="saveSubjectButton">Save Subject</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="deleteModalOverlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <h3 id="deleteModalTitle">Delete Subject</h3>
+            <p style="margin:0.5rem 0 0; color:#52637a; font-size:0.95rem;">Confirm before removing this subject record.</p>
+          </div>
+        </div>
+        <div style="padding:1rem 0 0;">
+          <p id="deleteModalText" style="font-weight:600; color:#102a43;"></p>
+          <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
+            <button id="cancelDeleteButton" type="button" class="button button-secondary">Cancel</button>
+            <button id="confirmDeleteButton" type="button" class="button button-primary" style="background:#c21f3c;">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+      const token = getAuthToken();
+      const storedUser = getStoredUser();
+      const loginUrl = '../auth/login.html';
+
+      if (!token || !storedUser) {
+        window.location.href = loginUrl;
+      }
+
+      const topbarUserName = document.getElementById('topbarUserName');
+      const topbarUserRole = document.getElementById('topbarUserRole');
+      const pageStatus = document.getElementById('pageStatus');
+      const statTotalSubjects = document.getElementById('statTotalSubjects');
+      const statActiveSubjects = document.getElementById('statActiveSubjects');
+      const statAssignedFaculty = document.getElementById('statAssignedFaculty');
+      const statTotalDepartments = document.getElementById('statTotalDepartments');
+      const subjectsTableBody = document.getElementById('subjectsTableBody');
+      const searchInput = document.getElementById('searchInput');
+      const departmentFilter = document.getElementById('departmentFilter');
+      const facultyFilter = document.getElementById('facultyFilter');
+      const clearFilters = document.getElementById('clearFilters');
+      const openAddSubject = document.getElementById('openAddSubject');
+      const subjectModalOverlay = document.getElementById('subjectModalOverlay');
+      const deleteModalOverlay = document.getElementById('deleteModalOverlay');
+      const closeSubjectModal = document.getElementById('closeSubjectModal');
+      const cancelSubjectModal = document.getElementById('cancelSubjectModal');
+      const subjectModalTitle = document.getElementById('subjectModalTitle');
+      const subjectModalForm = document.getElementById('subjectModalForm');
+      const modalDepartment = document.getElementById('modalDepartment');
+      const modalFaculty = document.getElementById('modalFaculty');
+      const subjectCodeInput = document.getElementById('subjectCode');
+      const subjectNameInput = document.getElementById('subjectName');
+      const subjectCreditsInput = document.getElementById('subjectCredits');
+      const subjectSemesterInput = document.getElementById('subjectSemester');
+      const deleteModalText = document.getElementById('deleteModalText');
+      const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+      const cancelDeleteButton = document.getElementById('cancelDeleteButton');
+      const logoutButton = document.getElementById('logoutButton');
+
+      let subjects = [];
+      let departments = [];
+      let faculties = [];
+      let editingSubjectId = null;
+      let deletingSubjectId = null;
+      let dataLoaded = false;
+
+      function showStatus(message, type = 'info') {
+        pageStatus.textContent = message;
+        pageStatus.style.display = 'block';
+        pageStatus.style.background = type === 'error' ? '#ffe8e8' : '#eef4ff';
+        pageStatus.style.borderColor = type === 'error' ? '#f5c2c7' : 'rgba(15, 75, 178, 0.12)';
+        pageStatus.style.color = type === 'error' ? '#c21f3c' : '#102a43';
+      }
+
+      function clearStatus() {
+        pageStatus.style.display = 'none';
+        pageStatus.textContent = ''; 
+      }
+
+      function setCounts() {
+        const total = subjects.length;
+        const activeCount = subjects.filter((subject) => subject.department_id && subject.faculty_id).length;
+        const facultySet = new Set(subjects.filter((subject) => subject.faculty_id).map((subject) => subject.faculty_id));
+        const departmentSet = new Set(subjects.filter((subject) => subject.department_id).map((subject) => subject.department_id));
+
+        statTotalSubjects.textContent = total;
+        statActiveSubjects.textContent = activeCount;
+        statAssignedFaculty.textContent = facultySet.size;
+        statTotalDepartments.textContent = departmentSet.size;
+      }
+
+      function departmentName(departmentId) {
+        const department = departments.find((item) => item.id === departmentId);
+        return department ? department.name : 'Unassigned';
+      }
+
+      function facultyName(facultyId) {
+        const faculty = faculties.find((item) => item.id === facultyId);
+        return faculty ? faculty.full_name || faculty.name || 'Unassigned' : 'Unassigned';
+      }
+
+      function getStatus(subject) {
+        return subject.department_id && subject.faculty_id ? 'Active' : 'Pending';
+      }
+
+      function renderSelectOptions(selectElement, items, placeholder) {
+        selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+        items.forEach((item) => {
+          const option = document.createElement('option');
+          option.value = item.id;
+          option.textContent = item.name || item.full_name || item.code || 'Unknown';
+          selectElement.appendChild(option);
+        });
+      }
+
+      function renderSubjects() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        const departmentId = departmentFilter.value;
+        const facultyId = facultyFilter.value;
+
+        const filtered = subjects.filter((subject) => {
+          const matchesSearch = [subject.name, subject.code].some((field) => field && field.toLowerCase().includes(searchTerm));
+          const matchesDepartment = !departmentId || subject.department_id === departmentId;
+          const matchesFaculty = !facultyId || subject.faculty_id === facultyId;
+          return matchesSearch && matchesDepartment && matchesFaculty;
+        });
+
+        if (!dataLoaded) {
+          subjectsTableBody.innerHTML = '<tr><td colspan="8" class="table-empty">Loading subjects…</td></tr>';
+          return;
+        }
+
+        if (filtered.length === 0) {
+          subjectsTableBody.innerHTML = '<tr><td colspan="8" class="table-empty">No subjects match your search or filters.</td></tr>';
+          return;
+        }
+
+        subjectsTableBody.innerHTML = filtered
+          .map((subject) => {
+            const department = departmentName(subject.department_id);
+            const faculty = facultyName(subject.faculty_id);
+            const status = getStatus(subject);
+            const statusClass = status === 'Active' ? 'status-pill active' : 'status-pill pending';
+            return `
+              <tr>
+                <td>${escapeHtml(subject.code || '—')}</td>
+                <td>${escapeHtml(subject.name || '—')}</td>
+                <td>${escapeHtml(department)}</td>
+                <td>${escapeHtml(faculty)}</td>
+                <td>${escapeHtml(subject.credits ?? '—')}</td>
+                <td>${escapeHtml(subject.semester ?? '—')}</td>
+                <td><span class="status-pill ${statusClass}">${status}</span></td>
+                <td>
+                  <div class="subject-actions">
+                    <button type="button" class="edit-button" data-id="${subject.id}">Edit</button>
+                    <button type="button" class="delete-button" data-id="${subject.id}" data-name="${escapeHtmlAttr(subject.name || subject.code || 'Subject')}">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
+
+        document.querySelectorAll('.edit-button').forEach((button) => {
+          button.addEventListener('click', () => openSubjectModal(button.dataset.id));
+        });
+        document.querySelectorAll('.delete-button').forEach((button) => {
+          button.addEventListener('click', () => openDeleteModal(button.dataset.id, button.dataset.name));
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function escapeHtmlAttr(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+      }
+
+      function resetModalForm() {
+        editingSubjectId = null;
+        subjectModalTitle.textContent = 'Add Subject';
+        subjectModalForm.reset();
+        modalDepartment.value = '';
+        modalFaculty.value = '';
+        subjectCreditsInput.value = '3';
+        subjectSemesterInput.value = '1';
+      }
+
+      function openSubjectModal(subjectId = null) {
+        clearStatus();
+        if (subjectId) {
+          const subject = subjects.find((item) => item.id === subjectId);
+          if (subject) {
+            editingSubjectId = subjectId;
+            subjectModalTitle.textContent = 'Edit Subject';
+            subjectCodeInput.value = subject.code || '';
+            subjectNameInput.value = subject.name || '';
+            subjectCreditsInput.value = subject.credits ?? 3;
+            subjectSemesterInput.value = subject.semester ?? 1;
+            modalDepartment.value = subject.department_id || '';
+            renderSelectOptions(modalFaculty, faculties.filter((f) => !modalDepartment.value || f.department_id === modalDepartment.value), 'Select faculty');
+            modalFaculty.value = subject.faculty_id || '';
+          }
+        } else {
+          resetModalForm();
+        }
+        subjectModalOverlay.classList.add('open');
+      }
+
+      function closeSubjectModalDialog() {
+        subjectModalOverlay.classList.remove('open');
+      }
+
+      function openDeleteModal(subjectId, subjectName) {
+        deletingSubjectId = subjectId;
+        deleteModalText.textContent = `Delete ${subjectName}? This action cannot be undone.`;
+        deleteModalOverlay.classList.add('open');
+      }
+
+      function closeDeleteModal() {
+        deletingSubjectId = null;
+        deleteModalOverlay.classList.remove('open');
+      }
+
+      async function fetchAllData() {
+        clearStatus();
+        dataLoaded = false;
+        renderSubjects();
+
+        try {
+          const [loadedDepartments, loadedFaculties, loadedSubjects] = await Promise.all([
+            getDepartments(),
+            getFaculties(),
+            request('/subjects')
+          ]);
+
+          departments = Array.isArray(loadedDepartments) ? loadedDepartments : [];
+          faculties = Array.isArray(loadedFaculties) ? loadedFaculties : [];
+          subjects = Array.isArray(loadedSubjects) ? loadedSubjects : [];
+
+          renderSelectOptions(departmentFilter, departments, 'All departments');
+          renderSelectOptions(facultyFilter, faculties, 'All faculty');
+          renderSelectOptions(modalDepartment, departments, 'Select department');
+          renderSelectOptions(modalFaculty, faculties, 'Select faculty');
+
+          setCounts();
+          dataLoaded = true;
+          renderSubjects();
+        } catch (error) {
+          showStatus(error.message || 'Unable to load subject data.', 'error');
+          subjectsTableBody.innerHTML = '<tr><td colspan="8" class="table-empty">Unable to load subjects. Please refresh the page.</td></tr>';
+          statTotalSubjects.textContent = '—';
+          statActiveSubjects.textContent = '—';
+          statAssignedFaculty.textContent = '—';
+          statTotalDepartments.textContent = '—';
+        }
+      }
+
+      async function saveSubject(event) {
+        event.preventDefault();
+        clearStatus();
+
+        const payload = {
+          code: subjectCodeInput.value.trim(),
+          name: subjectNameInput.value.trim(),
+          department_id: modalDepartment.value || null,
+          faculty_id: modalFaculty.value || null,
+          credits: Number(subjectCreditsInput.value) || 0,
+          semester: Number(subjectSemesterInput.value) || 0,
+        };
+
+        if (!payload.code || !payload.name || !payload.department_id || !payload.semester) {
+          showStatus('Please complete all required fields.', 'error');
+          return;
+        }
+
+        try {
+          if (editingSubjectId) {
+            await request(`/subjects/${editingSubjectId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            showStatus('Subject updated successfully.', 'info');
+          } else {
+            await request('/subjects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            showStatus('Subject created successfully.', 'info');
+          }
+
+          closeSubjectModalDialog();
+          await fetchAllData();
+        } catch (error) {
+          showStatus(error.message || 'Unable to save subject.', 'error');
+        }
+      }
+
+      async function deleteSubject() {
+        if (!deletingSubjectId) return;
+        clearStatus();
+
+        try {
+          await request(`/subjects/${deletingSubjectId}`, { method: 'DELETE' });
+          closeDeleteModal();
+          await fetchAllData();
+          showStatus('Subject deleted successfully.', 'info');
+        } catch (error) {
+          showStatus(error.message || 'Unable to delete subject.', 'error');
+        }
+      }
+
+      function updateFacultyOptions() {
+        const departmentId = modalDepartment.value;
+        const filteredFaculty = departmentId ? faculties.filter((faculty) => faculty.department_id === departmentId) : faculties;
+        renderSelectOptions(modalFaculty, filteredFaculty, 'Select faculty');
+      }
+
+      function updateTopbar() {
+        topbarUserName.textContent = storedUser.full_name || storedUser.email || 'Department Admin';
+        topbarUserRole.textContent = storedUser.role ? storedUser.role.replace(/_/g, ' ') : 'Department admin';
+      }
+
+      function logout() {
+        clearAuthData();
+        window.location.href = loginUrl;
+      }
+
+      openAddSubject.addEventListener('click', () => openSubjectModal());
+      closeSubjectModal.addEventListener('click', closeSubjectModalDialog);
+      cancelSubjectModal.addEventListener('click', closeSubjectModalDialog);
+      subjectModalForm.addEventListener('submit', saveSubject);
+      cancelDeleteButton.addEventListener('click', closeDeleteModal);
+      confirmDeleteButton.addEventListener('click', deleteSubject);
+      clearFilters.addEventListener('click', () => {
+        searchInput.value = '';
+        departmentFilter.value = '';
+        facultyFilter.value = '';
+        renderSubjects();
+      });
+      searchInput.addEventListener('input', renderSubjects);
+      departmentFilter.addEventListener('change', renderSubjects);
+      facultyFilter.addEventListener('change', renderSubjects);
+      modalDepartment.addEventListener('change', updateFacultyOptions);
+      logoutButton.addEventListener('click', logout);
+
+      document.addEventListener('click', (event) => {
+        const menuButton = document.querySelector('.user-menu-toggle');
+        const userMenu = document.querySelector('.user-menu');
+        if (menuButton && menuButton.contains(event.target)) {
+          event.preventDefault();
+          userMenu.classList.toggle('menu-open');
+          return;
+        }
+        if (!userMenu.contains(event.target)) {
+          userMenu.classList.remove('menu-open');
+        }
+      });
+
+      updateTopbar();
+      fetchAllData();
+    </script>
+  </body>
+</html>
