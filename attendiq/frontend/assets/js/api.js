@@ -31,6 +31,7 @@ async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
   const defaultHeaders = {
     Accept: "application/json",
+    "ngrok-skip-browser-warning": "true",
     ...getAuthHeaders(),
     ...options.headers,
   };
