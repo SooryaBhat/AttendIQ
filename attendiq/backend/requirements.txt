@@ -40,3 +40,4 @@ requests
 scipy
 scikit-learn
 pandas
+email-validator==2.3.0
