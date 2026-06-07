@@ -1,19 +1,17 @@
 const API_BASE_URL =
   "https://securely-masculine-elliptic.ngrok-free.dev";
 function ensureFavicon() {
-  const origin = window.location.protocol.startsWith("http")
-    ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-        ? LOCAL_API_BASE_URL
-        : window.location.origin)
-    : LOCAL_API_BASE_URL;
-  const iconHref = new URL("/assets/images/logo.svg", origin).href;
+  const iconHref = "/assets/images/logo.svg";
+
   let iconLink = document.querySelector("link[rel~='icon']");
+
   if (!iconLink) {
     iconLink = document.createElement("link");
     iconLink.rel = "icon";
     iconLink.type = "image/svg+xml";
     document.head.appendChild(iconLink);
   }
+
   iconLink.href = iconHref;
 }
 
