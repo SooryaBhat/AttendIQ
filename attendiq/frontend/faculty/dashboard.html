@@ -4,13 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AttendIQ | Faculty Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/images/logo.svg" />
+    <link rel="shortcut icon" href="../assets/images/logo.svg" />
+
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="brand-mark">AIQ</div>
+          <div class="brand-mark"><img src="../assets/images/logo.svg" alt="AttendIQ logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="brand-text-fallback" style="display:none;">AIQ</span></div>
           <div class="brand-text">
             <h2>AttendIQ</h2>
             <p>Faculty</p>
@@ -34,7 +37,7 @@
             <span class="nav-icon">📚</span>
             <span>Subjects</span>
           </a>
-          <a href="attendance_report.html">
+          <a href="reports.html">
             <span class="nav-icon">📊</span>
             <span>Reports</span>
           </a>
@@ -73,7 +76,7 @@
               <span>▾</span>
             </button>
             <div class="user-menu">
-              <a href="#profile">Profile</a>
+              <a href="profile.html">Profile</a>
               <a href="#settings">Settings</a>
               <a href="#logout">Sign out</a>
             </div>
@@ -90,40 +93,52 @@
         </section>
 
         <div class="card-grid">
-          <article class="card">
-            <h3>Create Attendance Session</h3>
-            <p class="metric-value">New session</p>
-            <p>Schedule a new attendance session for your class.</p>
-          </article>
+          <a class="card-link" href="sessions.html">
+            <article class="card">
+              <h3>Create Attendance Session</h3>
+              <p class="metric-value">New session</p>
+              <p>Schedule a new attendance session for your class.</p>
+            </article>
+          </a>
 
-          <article class="card">
-            <h3>Generate QR Code</h3>
-            <p class="metric-value">Ready</p>
-            <p>Produce QR attendance codes for fast student check-in.</p>
-          </article>
+          <a class="card-link" href="subjects.html">
+            <article class="card">
+              <h3>Generate QR Code</h3>
+              <p class="metric-value">Ready</p>
+              <p>Produce QR attendance codes for fast student check-in.</p>
+            </article>
+          </a>
 
-          <article class="card">
-            <h3>Attendance Reports</h3>
-            <p class="metric-value">Review</p>
-            <p>Analyse attendance trends and session performance.</p>
-          </article>
+          <a class="card-link" href="reports.html">
+            <article class="card">
+              <h3>Attendance Reports</h3>
+              <p class="metric-value">Review</p>
+              <p>Analyse attendance trends and session performance.</p>
+            </article>
+          </a>
 
-          <article class="card">
-            <h3>Subjects</h3>
-            <p class="metric-value">5 active</p>
-            <p>Manage your current subject list and class assignments.</p>
-          </article>
+          <a class="card-link" href="subjects.html">
+            <article class="card">
+              <h3>Subjects</h3>
+              <p class="metric-value">5 active</p>
+              <p>Manage your current subject list and class assignments.</p>
+            </article>
+          </a>
         </div>
 
         <div class="card-grid" style="margin-top: 1.5rem;">
-          <article class="card">
-            <h3>Student roster</h3>
-            <p>View enrolled students and attendance participation for each class.</p>
-          </article>
-          <article class="card">
-            <h3>Classroom workflow</h3>
-            <p>Prepare face and voice attendance sessions for future delivery.</p>
-          </article>
+          <a class="card-link" href="students.html">
+            <article class="card">
+              <h3>Student roster</h3>
+              <p>View enrolled students and attendance participation for each class.</p>
+            </article>
+          </a>
+          <a class="card-link" href="sessions.html">
+            <article class="card">
+              <h3>Classroom workflow</h3>
+              <p>Prepare face and voice attendance sessions for future delivery.</p>
+            </article>
+          </a>
         </div>
       </main>
     </div>

@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AttendIQ | Faculty Sessions</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/images/logo.svg" />
+    <link rel="shortcut icon" href="../assets/images/logo.svg" />
+
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
     <link rel="stylesheet" href="../assets/css/attendance.css" />
   </head>
@@ -11,7 +14,7 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="brand-mark">AIQ</div>
+          <div class="brand-mark"><img src="../assets/images/logo.svg" alt="AttendIQ logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="brand-text-fallback" style="display:none;">AIQ</span></div>
           <div class="brand-text">
             <h2>AttendIQ</h2>
             <p>Faculty</p>
@@ -68,7 +71,7 @@
               <span>▾</span>
             </button>
             <div class="user-menu">
-              <a href="#profile">Profile</a>
+              <a href="profile.html">Profile</a>
               <a href="#settings">Settings</a>
               <a href="#logout">Sign out</a>
             </div>
@@ -109,7 +112,7 @@
             <select id="filterSubject" class="input" style="width:220px;"><option value="">All subjects</option></select>
             <button id="btnAddSession" class="btn btn-primary">+ Add Session</button>
           </div>
-
+          <div id="sessionsMessage" style="display:none; padding:1rem; border-radius:8px; margin-bottom:1rem; font-weight:500;"></div>
           <div id="sessionsLoading" style="display:none; padding:1rem;">Loading sessions…</div>
           <div id="sessionsError" style="display:none; padding:1rem; color:var(--danger);">Failed to load sessions.</div>
 
@@ -139,6 +142,7 @@
     <div id="modalAddSession" class="modal" style="display:none;">
       <div class="modal-content">
         <h3>Create Session</h3>
+        <div id="modalSessionError" style="display:none; color:var(--danger); margin-bottom:1rem; font-weight:500;"></div>
         <div class="form-row">
           <label>Session Name</label>
           <input id="modalSessionName" class="input" />
@@ -204,6 +208,33 @@
       function showModal(show) {
         const modal = document.getElementById('modalAddSession');
         modal.style.display = show ? 'block' : 'none';
+        if (!show) {
+          clearModalError();
+        } else {
+          clearSessionMessage();
+        }
+      }
+
+      function showSessionMessage(message, isError = true) {
+        const container = document.getElementById('sessionsMessage');
+        container.textContent = message || '';
+        container.style.display = message ? 'block' : 'none';
+        container.style.background = isError ? 'rgba(255,235,238,0.95)' : 'rgba(233,245,255,0.95)';
+        container.style.color = isError ? 'var(--danger)' : 'var(--success)';
+      }
+
+      function showModalError(message) {
+        const container = document.getElementById('modalSessionError');
+        container.textContent = message || '';
+        container.style.display = message ? 'block' : 'none';
+      }
+
+      function clearModalError() {
+        showModalError('');
+      }
+
+      function clearSessionMessage() {
+        showSessionMessage('');
       }
 
       async function loadSubjects() {
@@ -280,10 +311,38 @@
         tbody.querySelectorAll('button[data-action]').forEach(btn=> btn.addEventListener('click', async (ev)=>{
           const id = btn.dataset.id;
           const action = btn.dataset.action;
-          if (action==='start') { try{ await startAttendanceSession(id); await refreshSessions(); }catch(e){alert(e.message||e);} }
-          if (action==='end') { if(confirm('End session?')){ try{ await endAttendanceSession(id); await refreshSessions(); }catch(e){alert(e.message||e);} } }
+          if (action==='start') {
+            try {
+              await startAttendanceSession(id);
+              await refreshSessions();
+              showSessionMessage('Session started successfully.', false);
+            } catch (e) {
+              showSessionMessage(e.message || 'Unable to start session.');
+            }
+          }
+          if (action==='end') {
+            if (confirm('End session?')) {
+              try {
+                await endAttendanceSession(id);
+                await refreshSessions();
+                showSessionMessage('Session ended successfully.', false);
+              } catch (e) {
+                showSessionMessage(e.message || 'Unable to end session.');
+              }
+            }
+          }
           if (action==='view') { viewSessionAttendance(id); }
-          if (action==='delete') { if(confirm('Delete session? This will remove its records.')){ try{ await deleteAttendanceSession(id); await refreshSessions(); }catch(e){alert(e.message||e);} } }
+          if (action==='delete') {
+            if (confirm('Delete session? This will remove its records.')) {
+              try {
+                await deleteAttendanceSession(id);
+                await refreshSessions();
+                showSessionMessage('Session deleted successfully.', false);
+              } catch (e) {
+                showSessionMessage(e.message || 'Unable to delete session.');
+              }
+            }
+          }
         }));
       }
 
@@ -293,7 +352,9 @@
         const date = document.getElementById('modalDate').value;
         const start = document.getElementById('modalStartTime').value;
         const end = document.getElementById('modalEndTime').value;
-        if (!name || !subject || !date) return alert('Please provide session name, subject and date.');
+        if (!name || !subject || !date) {
+          return showModalError('Please provide session name, subject, and date.');
+        }
 
         try {
           if (!_currentUser) throw new Error('Not authenticated. Please refresh the page.');
@@ -316,19 +377,19 @@
           await createAttendanceSession(payload);
           showModal(false);
           await refreshSessions();
+          showSessionMessage('Session created successfully.', false);
         } catch (err) {
-          alert(err.message || 'Failed to create session.');
+          showModalError(err.message || 'Failed to create session.');
         }
       }
 
       async function viewSessionAttendance(sessionId) {
         try {
           const records = await getSessionAttendanceRecords(sessionId);
-          const summary = `Attendance records: ${records.length}`;
-          // quick view dialog
-          alert(summary + '\nOpen Reports for full details.');
+          const summary = `Attendance records loaded: ${records.length}. Open Reports for full details.`;
+          showSessionMessage(summary, false);
         } catch (err) {
-          alert(err.message||'Failed to load attendance records.');
+          showSessionMessage(err.message || 'Failed to load attendance records.');
         }
       }
 

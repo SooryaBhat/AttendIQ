@@ -420,6 +420,14 @@ async function getStudentsByDepartment() {
   return request("/analytics/students-by-department");
 }
 
+async function getFacultyByDepartment() {
+  return request("/analytics/faculty-by-department");
+}
+
+async function getDepartmentStats() {
+  return request("/analytics/department-stats");
+}
+
 async function getAttendanceTrend() {
   return request("/analytics/attendance-trend");
 }

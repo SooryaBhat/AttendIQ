@@ -76,9 +76,21 @@ a {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 60%;
-  color: transparent;
-  text-indent: 100%;
   overflow: hidden;
+  font-weight: 700;
+}
+
+.sidebar-brand .brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.sidebar-brand .brand-mark .brand-text-fallback {
+  display: none;
+  color: #ffffff;
+  font-size: 0.85rem;
   font-weight: 700;
 }
 
@@ -370,7 +382,22 @@ a {
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.card:hover {
+.card-link,
+.quick-link-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.card-link .card,
+.quick-link-card .card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card:hover,
+.card-link:hover .card,
+.quick-link-card:hover .card {
   transform: translateY(-3px);
 }
 

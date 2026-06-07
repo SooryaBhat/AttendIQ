@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AttendIQ | Student Roster</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/images/logo.svg" />
+    <link rel="shortcut icon" href="../assets/images/logo.svg" />
+
+    <link rel="stylesheet" href="../assets/css/dashboard.css" />
+    <style>
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      .toolbar input,
+      .toolbar select {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.9rem 1rem;
+        background: var(--surface-muted);
+        color: var(--text);
+        font: inherit;
+        min-width: 200px;
+      }
+      .toolbar input:focus,
+      .toolbar select:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .toolbar-spacer { flex: 1; }
+      .status-banner {
+        margin-bottom: 1rem;
+        padding: 1rem 1.25rem;
+        border-radius: 18px;
+        background: #f1f5fb;
+        color: #102a43;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #52637a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark"><img src="../assets/images/logo.svg" alt="AttendIQ logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="brand-text-fallback" style="display:none;">AIQ</span></div>
+          <div class="brand-text">
+            <h2>AttendIQ</h2>
+            <p>Faculty</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="dashboard.html">
+            <span class="nav-icon">🏠</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="attendance.html">
+            <span class="nav-icon">✓</span>
+            <span>Attendance</span>
+          </a>
+          <a href="sessions.html">
+            <span class="nav-icon">🗓️</span>
+            <span>Sessions</span>
+          </a>
+          <a href="subjects.html">
+            <span class="nav-icon">📚</span>
+            <span>Subjects</span>
+          </a>
+          <a href="reports.html">
+            <span class="nav-icon">📊</span>
+            <span>Reports</span>
+          </a>
+          <a href="students.html" class="active">
+            <span class="nav-icon">🎓</span>
+            <span>Student roster</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+          <div style="color: rgba(255,255,255,0.72); font-size: 0.95rem; line-height: 1.5;">
+            Student roster
+            <br />Browse enrolled students by subject.
+          </div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">
+            <h1>Student roster</h1>
+            <p>View enrolled students across your assigned subjects.</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+          <div class="user-menu-container">
+            <button type="button" class="user-menu-toggle" aria-expanded="false">
+              <span>
+                <strong>Faculty User</strong>
+                <small>Course instructor</small>
+              </span>
+              <span>▾</span>
+            </button>
+            <div class="user-menu">
+              <a href="profile.html">Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#logout">Sign out</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="page-heading">
+          <div>
+            <h2>Student roster</h2>
+            <p>Search by subject, student name, roll number, and enrollment status.</p>
+          </div>
+        </section>
+
+        <div class="status-banner">
+          <strong>Roster loaded from your assigned subjects.</strong> Use filters below to narrow the list.
+        </div>
+
+        <div class="toolbar">
+          <input id="searchInput" type="text" placeholder="Search by name, roll number, or email…" />
+          <select id="subjectSelect">
+            <option value="">All subjects</option>
+          </select>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-outline" id="refreshRoster">Refresh</button>
+        </div>
+
+        <div class="panel">
+          <div class="table-wrapper">
+            <table class="subject-table subject-table-rich">
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th>Roll Number</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Subject</th>
+                </tr>
+              </thead>
+              <tbody id="rosterBody">
+                <tr><td colspan="5" class="empty-state">Loading students…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', initFacultyRoster);
+
+      async function initFacultyRoster(){
+        const token = localStorage.getItem('attendiq_token');
+        if(!token) return window.location.href='../auth/login.html';
+
+        let user;
+        try {
+          user = await fetchCurrentUser();
+          localStorage.setItem('attendiq_user', JSON.stringify(user));
+        } catch (err) {
+          localStorage.removeItem('attendiq_token');
+          localStorage.removeItem('attendiq_user');
+          return window.location.href='../auth/login.html';
+        }
+
+        document.getElementById('refreshRoster').addEventListener('click', loadRoster);
+        document.getElementById('searchInput').addEventListener('input', debounce(loadRoster, 250));
+        document.getElementById('subjectSelect').addEventListener('change', loadRoster);
+
+        await loadRoster();
+      }
+
+      async function loadRoster(){
+        const rosterBody = document.getElementById('rosterBody');
+        rosterBody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading students…</td></tr>';
+
+        try {
+          const user = JSON.parse(localStorage.getItem('attendiq_user') || '{}');
+          const subjects = await getSubjects();
+          const assignedSubjects = subjects.filter(subject => subject.faculty_id === user.id);
+
+          const subjectSelect = document.getElementById('subjectSelect');
+          subjectSelect.innerHTML = '<option value="">All subjects</option>' + assignedSubjects.map(subject => `
+            <option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)} (${escapeHtml(subject.code)})</option>
+          `).join('');
+
+          const roster = [];
+          for (const subject of assignedSubjects) {
+            const students = await getSubjectStudents(subject.id);
+            students.forEach(student => roster.push({
+              name: student.full_name || '—',
+              roll: student.roll_number || '—',
+              email: student.email || '—',
+              phone: student.phone || '—',
+              subject: `${subject.name} (${subject.code})`,
+            }));
+          }
+
+          const filterSubject = document.getElementById('subjectSelect').value;
+          const q = document.getElementById('searchInput').value.trim().toLowerCase();
+          const filtered = roster.filter(row => {
+            const matchesSubject = !filterSubject || row.subject === assignedSubjects.find(s => s.id === filterSubject)?.name + ' (' + assignedSubjects.find(s => s.id === filterSubject)?.code + ')';
+            const matchesText = !q || [row.name, row.roll, row.email, row.phone, row.subject].some(value => value.toLowerCase().includes(q));
+            return matchesSubject && matchesText;
+          });
+
+          if (!filtered.length) {
+            rosterBody.innerHTML = '<tr><td colspan="5" class="empty-state">No enrolled students found for the selected filters.</td></tr>';
+            return;
+          }
+
+          rosterBody.innerHTML = filtered.map(row => `
+            <tr>
+              <td>${escapeHtml(row.name)}</td>
+              <td>${escapeHtml(row.roll)}</td>
+              <td>${escapeHtml(row.email)}</td>
+              <td>${escapeHtml(row.phone)}</td>
+              <td>${escapeHtml(row.subject)}</td>
+            </tr>
+          `).join('');
+        } catch (err) {
+          console.error(err);
+          rosterBody.innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load roster. Please refresh.</td></tr>';
+        }
+      }
+
+      function debounce(fn, wait) {
+        let timer;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), wait);
+        };
+      }
+
+      function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value || '';
+        return div.innerHTML;
+      }
+    </script>
+  </body>
+</html>

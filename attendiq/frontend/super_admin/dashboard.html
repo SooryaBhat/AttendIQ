@@ -4,13 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AttendIQ | Super Admin Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/images/logo.svg" />
+    <link rel="shortcut icon" href="../assets/images/logo.svg" />
+
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="brand-mark">AIQ</div>
+          <div class="brand-mark"><img src="../assets/images/logo.svg" alt="AttendIQ logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="brand-text-fallback" style="display:none;">AIQ</span></div>
           <div class="brand-text">
             <h2>AttendIQ</h2>
             <p>Super Admin</p>
@@ -70,7 +73,7 @@
               <span>▾</span>
             </button>
             <div class="user-menu">
-              <a href="#profile">Profile</a>
+              <a href="profile.html">Profile</a>
               <a href="#account">Account settings</a>
               <a href="#logout">Sign out</a>
             </div>
@@ -87,53 +90,69 @@
         </section>
 
         <div class="card-grid">
-          <article class="card">
-            <h3>Total Departments</h3>
-            <p id="cardTotalDepartments" class="metric-value">—</p>
-            <p>All active academic and administrative units.</p>
-          </article>
+          <a class="card-link" href="departments.html">
+            <article class="card">
+              <h3>Total Departments</h3>
+              <p id="cardTotalDepartments" class="metric-value">—</p>
+              <p>All active academic and administrative units.</p>
+            </article>
+          </a>
 
-          <article class="card">
-            <h3>Department Admins</h3>
-            <p id="cardDepartmentAdmins" class="metric-value">—</p>
-            <p>Users with access to manage individual departments.</p>
-          </article>
+          <a class="card-link" href="admins.html">
+            <article class="card">
+              <h3>Department Admins</h3>
+              <p id="cardDepartmentAdmins" class="metric-value">—</p>
+              <p>Users with access to manage individual departments.</p>
+            </article>
+          </a>
 
-          <article class="card">
-            <h3>Total Faculty</h3>
-            <p id="cardTotalFaculty" class="metric-value">—</p>
-            <p>Registered faculty members across departments.</p>
-          </article>
+          <a class="card-link" href="reports.html">
+            <article class="card">
+              <h3>Total Faculty</h3>
+              <p id="cardTotalFaculty" class="metric-value">—</p>
+              <p>Registered faculty members across departments.</p>
+            </article>
+          </a>
 
-          <article class="card">
-            <h3>Total Students</h3>
-            <p id="cardTotalStudents" class="metric-value">—</p>
-            <p>Enrolled students across the institution.</p>
-          </article>
+          <a class="card-link" href="reports.html">
+            <article class="card">
+              <h3>Total Students</h3>
+              <p id="cardTotalStudents" class="metric-value">—</p>
+              <p>Enrolled students across the institution.</p>
+            </article>
+          </a>
         </div>
 
         <div class="card-grid" style="margin-top: 1.5rem;">
-          <article class="card">
-            <h3>Total Subjects</h3>
-            <p id="cardTotalSubjects" class="metric-value">—</p>
-            <p>Subjects configured for attendance and enrollment.</p>
-          </article>
-          <article class="card">
-            <h3>Attendance Sessions</h3>
-            <p id="cardAttendanceSessions" class="metric-value">—</p>
-            <p>Recorded attendance sessions in the system.</p>
-          </article>
+          <a class="card-link" href="reports.html">
+            <article class="card">
+              <h3>Total Subjects</h3>
+              <p id="cardTotalSubjects" class="metric-value">—</p>
+              <p>Subjects configured for attendance and enrollment.</p>
+            </article>
+          </a>
+          <a class="card-link" href="reports.html">
+            <article class="card">
+              <h3>Attendance Sessions</h3>
+              <p id="cardAttendanceSessions" class="metric-value">—</p>
+              <p>Recorded attendance sessions in the system.</p>
+            </article>
+          </a>
         </div>
 
         <div class="card-grid" style="margin-top: 1.5rem;">
-          <article class="card">
-            <h3>Department snapshot</h3>
-            <p>View department lists, approval status, and admin coverage in one place.</p>
-          </article>
-          <article class="card">
-            <h3>Attendance workflow</h3>
-            <p>Ready for face recognition, voice recognition, and future QR attendance flows.</p>
-          </article>
+          <a class="card-link" href="departments.html">
+            <article class="card">
+              <h3>Department snapshot</h3>
+              <p>View department lists, approval status, and admin coverage in one place.</p>
+            </article>
+          </a>
+          <a class="card-link" href="reports.html">
+            <article class="card">
+              <h3>Attendance workflow</h3>
+              <p>Ready for face recognition, voice recognition, and future QR attendance flows.</p>
+            </article>
+          </a>
         </div>
       </main>
     </div>

@@ -41,10 +41,14 @@ def get_analytics_summary(current_user: UserResponse = Depends(get_current_user)
     try:
         students = _fetch("profiles", {"role": "student"})
         faculty  = _fetch("profiles", {"role": "faculty"})
+        admins   = _fetch("profiles", {"role": "department_admin"})
+        departments = supabase.table("departments").select("id").execute().data or []
         subjects = supabase.table("subjects").select("id").execute().data or []
         sessions = supabase.table("attendance_sessions").select("id").execute().data or []
         records  = supabase.table("attendance_records").select("status").execute().data or []
         return {
+            "total_departments":          len(departments),
+            "total_department_admins":    len(admins),
             "total_students":             len(students),
             "total_faculty":              len(faculty),
             "total_subjects":             len(subjects),
@@ -156,6 +160,87 @@ def students_by_department(current_user: UserResponse = Depends(get_current_user
         return {"labels": labels, "data": data}
     except Exception as exc:
         logger.exception("analytics/students-by-department error")
+        raise HTTPException(500, str(exc)) from exc
+
+
+# ── /analytics/faculty-by-department ────────────────────────────────────────
+
+@router.get("/faculty-by-department")
+def faculty_by_department(current_user: UserResponse = Depends(get_current_user)) -> dict:
+    try:
+        departments = supabase.table("departments").select("id, name").execute().data or []
+        faculty     = _fetch("profiles", {"role": "faculty"})
+
+        dept_map = {d["id"]: d["name"] for d in departments}
+        counts: dict = {}
+        for f in faculty:
+            name = dept_map.get(f.get("department_id"), "Unassigned")
+            counts[name] = counts.get(name, 0) + 1
+
+        labels = [d["name"] for d in departments]
+        data   = [counts.get(n, 0) for n in labels]
+        return {"labels": labels, "data": data}
+    except Exception as exc:
+        logger.exception("analytics/faculty-by-department error")
+        raise HTTPException(500, str(exc)) from exc
+
+
+# ── /analytics/department-stats ─────────────────────────────────────────────
+
+@router.get("/department-stats")
+def department_stats(current_user: UserResponse = Depends(get_current_user)) -> list:
+    try:
+        departments = supabase.table("departments").select("id, name").execute().data or []
+        students    = _fetch("profiles", {"role": "student"})
+        faculty     = _fetch("profiles", {"role": "faculty"})
+        admins      = _fetch("profiles", {"role": "department_admin"})
+        subjects    = supabase.table("subjects").select("id, department_id").execute().data or []
+        sessions    = supabase.table("attendance_sessions").select("id, subject_id").execute().data or []
+        records     = supabase.table("attendance_records").select("session_id, status").execute().data or []
+
+        dept_map = {d["id"]: d["name"] for d in departments}
+        subject_dept = {s["id"]: s.get("department_id") for s in subjects}
+        session_dept = {s["id"]: subject_dept.get(s.get("subject_id")) for s in sessions}
+
+        student_counts: dict = {}
+        faculty_counts: dict = {}
+        admin_counts: dict = {}
+        attendance_by_dept: dict = {}
+
+        for s in students:
+            name = dept_map.get(s.get("department_id"), "Unassigned")
+            student_counts[name] = student_counts.get(name, 0) + 1
+
+        for f in faculty:
+            name = dept_map.get(f.get("department_id"), "Unassigned")
+            faculty_counts[name] = faculty_counts.get(name, 0) + 1
+
+        for a in admins:
+            name = dept_map.get(a.get("department_id"), "Unassigned")
+            admin_counts[name] = admin_counts.get(name, 0) + 1
+
+        for r in records:
+            dept_id = session_dept.get(r.get("session_id"))
+            if dept_id:
+                name = dept_map.get(dept_id, "Unassigned")
+                attendance_by_dept.setdefault(name, []).append(r)
+
+        results = []
+        for dept in departments:
+            name = dept["name"]
+            records_for_dept = attendance_by_dept.get(name, [])
+            results.append({
+                "department_id": dept["id"],
+                "department_name": name,
+                "total_students": student_counts.get(name, 0),
+                "total_faculty": faculty_counts.get(name, 0),
+                "total_department_admins": admin_counts.get(name, 0),
+                "attendance_percent": _pct(records_for_dept),
+            })
+
+        return results
+    except Exception as exc:
+        logger.exception("analytics/department-stats error")
         raise HTTPException(500, str(exc)) from exc
 
 

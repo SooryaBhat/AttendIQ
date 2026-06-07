@@ -4,26 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AttendIQ | Super Admin Reports</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/images/logo.svg" />
+    <link rel="shortcut icon" href="../assets/images/logo.svg" />
+
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
     <style>
-      .reports-grid { display:grid; grid-template-columns: repeat(3, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+      .metrics-grid { display:grid; grid-template-columns: repeat(3, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem; }
       .report-card { background:var(--card-bg); border-radius:12px; padding:1rem; box-shadow:var(--card-shadow); }
       .report-card h3 { margin:0 0 0.5rem; color:var(--muted); }
       .report-card .metric { font-size:2rem; font-weight:700; margin-top:0.5rem; }
-      .chart-row { display:grid; grid-template-columns: 2fr 1fr; gap:1rem; }
-      @media (max-width: 900px) { .reports-grid, .chart-row { grid-template-columns: 1fr; } }
-      .table-card { padding:1rem; border-radius:12px; background:var(--card-bg); box-shadow:var(--card-shadow); }
-      .table-card table { width:100%; border-collapse:collapse; }
+      .chart-grid { display:grid; grid-template-columns: repeat(2, minmax(280px, 1fr)); gap:1rem; }
+      .chart-card { background:var(--card-bg); border-radius:12px; padding:1rem; box-shadow:var(--card-shadow); }
+      .chart-card h4 { margin:0 0 1rem; color:var(--muted); font-size:1rem; }
+      .chart-card canvas { width:100% !important; height:auto !important; }
+      .table-card { padding:1rem; border-radius:12px; background:var(--card-bg); box-shadow:var(--card-shadow); overflow-x:auto; }
+      .table-card table { width:100%; border-collapse:collapse; min-width:600px; }
       .table-card th, .table-card td { padding:0.75rem 0.5rem; border-bottom:1px solid var(--border); text-align:left; }
       .table-card tbody tr:last-child td { border-bottom:none; }
-      .chart-title { margin:0 0 0.75rem; font-size:1rem; color:var(--muted); }
+      @media (max-width: 900px) { .metrics-grid, .chart-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 520px) { .report-card .metric { font-size:1.5rem; } }
     </style>
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="brand-mark">AIQ</div>
+          <div class="brand-mark"><img src="../assets/images/logo.svg" alt="AttendIQ logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="brand-text-fallback" style="display:none;">AIQ</span></div>
           <div class="brand-text">
             <h2>AttendIQ</h2>
             <p>Super Admin</p>
@@ -84,7 +90,7 @@
           </div>
         </section>
 
-        <div class="reports-grid">
+        <div class="metrics-grid">
           <div class="report-card">
             <h3>Departments</h3>
             <div id="reportDepartments" class="metric">—</div>
@@ -111,27 +117,39 @@
           </div>
         </div>
 
-        <div class="chart-row">
-          <div class="report-card">
-            <h4 class="chart-title">Students by Department</h4>
-            <canvas id="studentsByDeptChart" height="240"></canvas>
+        <div class="chart-grid">
+          <div class="chart-card">
+            <h4>Students by Department</h4>
+            <canvas id="studentsByDeptChart"></canvas>
           </div>
-          <div class="report-card">
-            <h4 class="chart-title">Departments Summary</h4>
-            <div class="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Department</th>
-                    <th>Admins</th>
-                    <th>Students</th>
-                    <th>Faculty</th>
-                  </tr>
-                </thead>
-                <tbody id="departmentStatsBody"></tbody>
-              </table>
-            </div>
+          <div class="chart-card">
+            <h4>Faculty by Department</h4>
+            <canvas id="facultyByDeptChart"></canvas>
           </div>
+          <div class="chart-card">
+            <h4>Attendance by Department</h4>
+            <canvas id="attendanceByDeptChart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h4>Department Comparison</h4>
+            <canvas id="departmentComparisonChart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-card" style="margin-top:1.5rem;">
+          <h4>Department Summary</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Admins</th>
+                <th>Faculty</th>
+                <th>Students</th>
+                <th>Attendance %</th>
+              </tr>
+            </thead>
+            <tbody id="departmentStatsBody"></tbody>
+          </table>
         </div>
       </main>
     </div>

@@ -66,11 +66,23 @@ a {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 55%;
-  color: transparent;
-  text-indent: 100%;
   overflow: hidden;
   font-weight: 700;
   font-size: 1rem;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-mark .brand-text-fallback {
+  display: none;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .brand h1 {

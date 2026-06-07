@@ -58,7 +58,7 @@ def create_attendance_session(
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:
         logger.exception("create_session error: %s", exc)
-        raise HTTPException(400, f"Could not create session: {exc}") from exc
+        raise HTTPException(500, "Unable to create attendance session at this time.") from exc
 
 
 @router.get("/sessions", response_model=List[AttendanceSessionResponse])
@@ -74,7 +74,7 @@ def get_attendance_sessions(
         )
     except Exception as exc:
         logger.exception("list_sessions error: %s", exc)
-        raise HTTPException(500, f"Could not load sessions: {exc}") from exc
+        raise HTTPException(500, "Unable to load attendance sessions at this time.") from exc
 
 
 @router.get("/sessions/{session_id}", response_model=AttendanceSessionResponse)
@@ -84,7 +84,8 @@ def get_attendance_session(session_id: UUID, current_user: UserResponse = Depend
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(500, f"Could not load session: {exc}") from exc
+        logger.exception("get_session error: %s", exc)
+        raise HTTPException(500, "Unable to load the attendance session.") from exc
 
 
 @router.put("/sessions/{session_id}/start", response_model=AttendanceSessionResponse)
@@ -95,7 +96,7 @@ def start_attendance_session(session_id: UUID, current_user: UserResponse = Depe
         raise HTTPException(404, str(exc)) from exc
     except Exception as exc:
         logger.exception("start_session error: %s", exc)
-        raise HTTPException(400, f"Could not start session: {exc}") from exc
+        raise HTTPException(500, "Unable to start the attendance session.") from exc
 
 
 @router.put("/sessions/{session_id}/end", response_model=AttendanceSessionResponse)
@@ -106,7 +107,7 @@ def end_attendance_session(session_id: UUID, current_user: UserResponse = Depend
         raise HTTPException(404, str(exc)) from exc
     except Exception as exc:
         logger.exception("end_session error: %s", exc)
-        raise HTTPException(400, f"Could not end session: {exc}") from exc
+        raise HTTPException(500, "Unable to end the attendance session.") from exc
 
 
 @router.delete("/sessions/{session_id}")
@@ -114,7 +115,8 @@ def delete_attendance_session(session_id: UUID, current_user: UserResponse = Dep
     try:
         return delete_session(str(session_id))
     except Exception as exc:
-        raise HTTPException(400, f"Could not delete session: {exc}") from exc
+        logger.exception("delete_session error: %s", exc)
+        raise HTTPException(500, "Unable to delete the attendance session.") from exc
 
 
 # ── Manual mark ───────────────────────────────────────────────────────────────
@@ -142,7 +144,8 @@ def get_session_records(session_id: UUID, current_user: UserResponse = Depends(g
     try:
         return get_session_attendance(str(session_id))
     except Exception as exc:
-        raise HTTPException(500, f"Could not load records: {exc}") from exc
+        logger.exception("get_session_records error: %s", exc)
+        raise HTTPException(500, "Unable to load attendance records at this time.") from exc
 
 
 @router.get("/student-history")

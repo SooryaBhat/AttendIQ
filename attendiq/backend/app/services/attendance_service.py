@@ -1,8 +1,8 @@
 # ============================================================
 #  AttendIQ — Attendance Service  (complete rewrite)
 #  Root causes fixed:
-#  1. attendance_sessions has NO department_id / method columns
-#     → removed from insert payload
+#  1. attendance_sessions must include department_id in inserts
+#     → persist department_id from subject or current faculty
 #  2. attendance_records has no method/confidence/subject_id cols
 #     → insert only columns that exist in schema
 #  3. start/end session uses wrong column name (completed_at vs end_time)
@@ -24,8 +24,8 @@ from app.models.attendance import (
 logger = logging.getLogger(__name__)
 
 # ── Schema-safe column sets ───────────────────────────────────────────────────
-# attendance_sessions actual columns (from schema.sql):
-#   id, subject_id, faculty_id, session_date, start_time, end_time,
+# attendance_sessions actual columns (from schema.sql / current DB schema):
+#   id, department_id, subject_id, faculty_id, session_date, start_time, end_time,
 #   session_label, status, qr_code, created_at, updated_at
 #
 # attendance_records actual columns (from schema.sql):
@@ -34,15 +34,19 @@ logger = logging.getLogger(__name__)
 
 
 def _build_session_response(row: dict) -> AttendanceSessionResponse:
+    session_label = row.get("session_label") or row.get("session_name") or ""
+    started_at = row.get("start_time") or row.get("started_at")
+    completed_at = row.get("end_time") or row.get("ended_at")
+
     return AttendanceSessionResponse(
         id=row["id"],
         subject_id=row["subject_id"],
         faculty_id=row.get("faculty_id"),
-        session_label=row.get("session_label") or "",
+        session_label=session_label,
         session_date=row.get("session_date"),
-        started_at=row.get("start_time"),       # schema uses start_time
-        completed_at=row.get("end_time"),        # schema uses end_time
-        status=row.get("status", "scheduled"),
+        started_at=started_at,
+        completed_at=completed_at,
+        status=row.get("status", "pending"),
         created_at=row.get("created_at"),
     )
 
@@ -72,24 +76,34 @@ def _get_session_row(session_id: str) -> dict:
 
 def create_session(payload: AttendanceSessionCreate) -> AttendanceSessionResponse:
     """
-    Insert only columns that exist in the DB schema.
-    Ignore: department_id, method, total_students, present_count,
-            absent_count, processing_log, started_at, completed_at.
+    Insert only the attendance session fields required by the database.
+    Required columns include department_id, faculty_id, subject_id,
+    session_date, session_label, and status.
     """
+    if not payload.department_id:
+        raise ValueError("Department ID is required for attendance sessions.")
+
     data = {
         "id":            str(uuid4()),
+        "department_id": str(payload.department_id),
         "subject_id":    str(payload.subject_id),
         "faculty_id":    str(payload.faculty_id),
         "session_date":  payload.session_date.isoformat() if payload.session_date else None,
         "session_label": payload.session_label,
-        "status":        payload.status or "scheduled",
+        "status":        payload.status or "pending",
     }
 
     response = supabase.table("attendance_sessions").insert(data).execute()
 
+    if getattr(response, "error", None):
+        raw_error = response.error
+        if isinstance(raw_error, dict):
+            raw_error = raw_error.get("message") or raw_error.get("details") or raw_error
+        raise RuntimeError("Unable to create attendance session. " + str(raw_error))
+
     if not response.data:
         logger.error("create_session: insert returned no data — %s", response)
-        raise RuntimeError("Unable to create session — database insert returned no data.")
+        raise RuntimeError("Unable to create attendance session — database insert returned no data.")
 
     created = response.data[0] if isinstance(response.data, list) else response.data
     return _build_session_response(created)
