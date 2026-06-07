@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional
 from uuid import UUID
-
+from pydantic import BaseModel
 from app.dependencies.auth import get_current_user
 from app.models.student import (
     StudentCreate,

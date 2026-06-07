@@ -6,14 +6,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes.auth       import router as auth_router
-from app.routes.dept_admin import router as dept_admin_router
-from app.routes.student    import router as student_router
-from app.routes.faculty    import router as faculty_router
-from app.routes.subject    import router as subject_router
-from app.routes.attendance import router as attendance_router
-from app.routes.biometric  import router as biometric_router   # NEW
+from app.routes.auth        import router as auth_router
+from app.routes.dept_admin  import router as dept_admin_router
+from app.routes.student     import router as student_router
+from app.routes.faculty     import router as faculty_router
+from app.routes.subject     import router as subject_router
+from app.routes.attendance  import router as attendance_router
+from app.routes.biometric   import router as biometric_router
 from app.routes.super_admin import router as super_admin_router
+from app.routes.analytics   import router as analytics_router   # NEW
 
 app = FastAPI(
     title="AttendIQ API",
@@ -35,8 +36,9 @@ app.include_router(student_router)
 app.include_router(faculty_router)
 app.include_router(subject_router)
 app.include_router(attendance_router)
-app.include_router(biometric_router)   # NEW
+app.include_router(biometric_router)
 app.include_router(super_admin_router)
+app.include_router(analytics_router)          # NEW
 
 
 @app.get("/", tags=["root"])

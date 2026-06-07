@@ -323,3 +323,140 @@ async function getSessionAttendanceRecords(sessionId) {
 async function getStudentAttendanceHistory() {
   return request("/attendance/student-history");
 }
+
+// ============================================================================
+// ENROLLMENT & SUBJECT API
+// ============================================================================
+
+async function joinSubjectByCode(subjectCode, studentId) {
+  return request("/subjects/join-by-code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subject_code: subjectCode, student_id: studentId || undefined }),
+  });
+}
+
+async function enrollStudentInSubject(subjectId, studentId) {
+  return request(`/subjects/${subjectId}/enroll`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student_id: studentId || undefined }),
+  });
+}
+
+async function unenrollStudentFromSubject(subjectId, studentId) {
+  return request(`/subjects/${subjectId}/unenroll/${studentId}`, { method: "DELETE" });
+}
+
+async function getStudentSubjects(studentId) {
+  return request(`/subjects/students/${studentId}`);
+}
+
+async function getSubjectStudents(subjectId) {
+  return request(`/subjects/${subjectId}/students`);
+}
+
+async function createSubject(payload) {
+  return request("/subjects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function updateSubject(id, payload) {
+  return request(`/subjects/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function deleteSubject(id) {
+  return request(`/subjects/${id}`, { method: "DELETE" });
+}
+
+// ============================================================================
+// ANALYTICS API
+// ============================================================================
+
+async function getAnalyticsSummary() {
+  return request("/analytics/summary");
+}
+
+async function getStudentsByDepartment() {
+  return request("/analytics/students-by-department");
+}
+
+async function getAttendanceTrend() {
+  return request("/analytics/attendance-trend");
+}
+
+async function getDepartmentComparison() {
+  return request("/analytics/department-comparison");
+}
+
+async function getSubjectAttendance() {
+  return request("/analytics/subject-attendance");
+}
+
+async function getTopStudents(limit = 10) {
+  return request(`/analytics/top-students?limit=${limit}`);
+}
+
+async function getLowStudents(limit = 10) {
+  return request(`/analytics/low-students?limit=${limit}`);
+}
+
+// ============================================================================
+// STUDENT ACTIVATION (Dept Admin)
+// ============================================================================
+
+async function createStudentWithActivation(payload) {
+  return request("/students/create-with-activation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function bulkImportStudents(departmentId, students) {
+  return request(`/students/${departmentId}/bulk-import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(students),
+  });
+}
+
+// ============================================================================
+// PROFILE
+// ============================================================================
+
+async function updateProfile(payload) {
+  const user = getStoredUser();
+  if (!user) throw new Error("Not logged in");
+  const role = user.role;
+  let path;
+  if (role === "student") path = `/students/${user.id}`;
+  else if (role === "faculty") path = `/faculties/${user.id}`;
+  else path = `/auth/profile`;     // fallback
+  return request(path, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function changePassword(newPassword) {
+  const user = getStoredUser();
+  if (!user) throw new Error("Not logged in");
+  return updateProfile({ password: newPassword });
+}
+
+// ============================================================================
+// BIOMETRIC STATUS
+// ============================================================================
+
+async function getBiometricStatus() {
+  return request("/biometric/status");
+}

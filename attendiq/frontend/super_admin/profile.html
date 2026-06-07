@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Admin Profile | AttendIQ</title>
+  <link rel="stylesheet" href="../assets/css/dashboard.css" />
+  <link rel="stylesheet" href="../assets/css/subjects.css" />
+  <style>
+    .profile-shell { max-width:860px; margin:0 auto; }
+    .profile-hero { display:flex; gap:1.75rem; align-items:flex-start; background:#fff; border-radius:24px; padding:1.75rem; box-shadow:0 16px 36px rgba(16,42,67,.08); margin-bottom:1.5rem; flex-wrap:wrap; }
+    .avatar { width:100px; height:100px; border-radius:50%; background:linear-gradient(135deg,#0f4bb2,#1f75d1); display:grid; place-items:center; color:#fff; font-size:2.4rem; font-weight:800; flex-shrink:0; }
+    .hero-info { flex:1; min-width:200px; }
+    .hero-info h2 { margin:0 0 .25rem; font-size:1.6rem; }
+    .hero-info .role-badge { display:inline-block; padding:.3rem .9rem; border-radius:999px; background:rgba(15,75,178,.1); color:#0f4bb2; font-weight:700; font-size:.85rem; margin-bottom:.5rem; }
+    .hero-info .meta { color:#52637a; font-size:.92rem; }
+    .info-grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+    .info-card { background:#fff; border-radius:20px; padding:1.25rem 1.5rem; box-shadow:0 8px 24px rgba(16,42,67,.06); border:1px solid rgba(16,42,67,.06); }
+    .info-card h4 { margin:0 0 .75rem; color:#52637a; font-size:.85rem; text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+    .info-row { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid rgba(16,42,67,.06); }
+    .info-row:last-child { border-bottom:none; }
+    .info-row .label { color:#52637a; font-size:.9rem; }
+    .info-row .value { font-weight:600; }
+    .stat-metric { font-size:2rem; font-weight:800; color:#0f4bb2; }
+    .badge-ok  { background:rgba(20,164,77,.1); color:#14a44d; padding:.25rem .7rem; border-radius:999px; font-size:.82rem; font-weight:700; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">AIQ</div>
+      <div class="brand-text"><h2>AttendIQ</h2><p>Super Admin</p></div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+      <a href="departments.html"><span class="nav-icon">🏢</span><span>Departments</span></a>
+      <a href="admins.html"><span class="nav-icon">👤</span><span>Dept Admins</span></a>
+      <a href="reports.html"><span class="nav-icon">📊</span><span>Reports</span></a>
+      <a href="profile.html" class="active"><span class="nav-icon">🙍</span><span>Profile</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title">
+        <h1>Super Admin Profile</h1>
+        <p>Your system administrator account and platform summary.</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+      <div class="user-menu-container">
+        <button type="button" class="user-menu-toggle" aria-expanded="false">
+          <span><strong id="topbarName">Admin</strong><small>Super admin</small></span>
+          <span>▾</span>
+        </button>
+        <div class="user-menu">
+          <a href="profile.html">Profile</a>
+          <a href="#logout">Sign out</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-content">
+    <div class="profile-shell">
+      <div class="profile-hero">
+        <div class="avatar" id="avatarEl">SA</div>
+        <div class="hero-info">
+          <div class="role-badge">Super Administrator</div>
+          <h2 id="heroName">Loading…</h2>
+          <div class="meta" id="heroEmail">—</div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <h4>Account Info</h4>
+          <div class="info-row"><span class="label">Email</span><span class="value" id="infoEmail">—</span></div>
+          <div class="info-row"><span class="label">Phone</span><span class="value" id="infoPhone">—</span></div>
+          <div class="info-row"><span class="label">Status</span><span class="value"><span class="badge-ok">Active</span></span></div>
+        </div>
+        <div class="info-card">
+          <h4>Platform Summary</h4>
+          <div class="info-row"><span class="label">Departments</span><span class="value stat-metric" id="statDepts">—</span></div>
+          <div class="info-row"><span class="label">Total Students</span><span class="value stat-metric" id="statStudents">—</span></div>
+          <div class="info-row"><span class="label">Total Faculty</span><span class="value stat-metric" id="statFaculty">—</span></div>
+          <div class="info-row"><span class="label">Sessions</span><span class="value stat-metric" id="statSessions">—</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/dashboard.js"></script>
+<script>
+  async function loadProfile() {
+    try {
+      const user = await fetchCurrentUser();
+      const initials = (user.full_name||'SA').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      document.getElementById('avatarEl').textContent   = initials;
+      document.getElementById('heroName').textContent   = user.full_name || 'Super Admin';
+      document.getElementById('heroEmail').textContent  = user.email || '—';
+      document.getElementById('topbarName').textContent = user.full_name?.split(' ')[0] || 'Admin';
+      document.getElementById('infoEmail').textContent  = user.email || '—';
+      document.getElementById('infoPhone').textContent  = user.phone || '—';
+
+      const summary = await getSuperAdminSummary();
+      document.getElementById('statDepts').textContent    = summary.total_departments ?? '—';
+      document.getElementById('statStudents').textContent = summary.total_students ?? '—';
+      document.getElementById('statFaculty').textContent  = summary.total_faculty ?? '—';
+      document.getElementById('statSessions').textContent = summary.total_attendance_sessions ?? '—';
+    } catch(e) {
+      document.getElementById('heroName').textContent = 'Error loading profile';
+    }
+  }
+  window.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+</body>
+</html>

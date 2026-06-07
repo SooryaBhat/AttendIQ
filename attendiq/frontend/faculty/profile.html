@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faculty Profile | AttendIQ</title>
+  <link rel="stylesheet" href="../assets/css/dashboard.css" />
+  <link rel="stylesheet" href="../assets/css/subjects.css" />
+  <style>
+    .profile-shell { max-width:860px; margin:0 auto; }
+    .profile-hero { display:flex; gap:1.75rem; align-items:flex-start; background:#fff; border-radius:24px; padding:1.75rem; box-shadow:0 16px 36px rgba(16,42,67,.08); margin-bottom:1.5rem; flex-wrap:wrap; }
+    .avatar { width:100px; height:100px; border-radius:50%; background:linear-gradient(135deg,#0f4bb2,#1f75d1); display:grid; place-items:center; color:#fff; font-size:2.4rem; font-weight:800; flex-shrink:0; }
+    .hero-info { flex:1; min-width:200px; }
+    .hero-info h2 { margin:0 0 .25rem; font-size:1.6rem; }
+    .hero-info .role-badge { display:inline-block; padding:.3rem .9rem; border-radius:999px; background:rgba(15,75,178,.1); color:#0f4bb2; font-weight:700; font-size:.85rem; margin-bottom:.5rem; }
+    .hero-info .meta { color:#52637a; font-size:.92rem; }
+    .info-grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); margin-bottom:1.5rem; }
+    .info-card { background:#fff; border-radius:20px; padding:1.25rem 1.5rem; box-shadow:0 8px 24px rgba(16,42,67,.06); border:1px solid rgba(16,42,67,.06); }
+    .info-card h4 { margin:0 0 .75rem; color:#52637a; font-size:.85rem; text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+    .info-row { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid rgba(16,42,67,.06); }
+    .info-row:last-child { border-bottom:none; }
+    .info-row .label { color:#52637a; font-size:.9rem; }
+    .info-row .value { font-weight:600; font-size:.92rem; }
+    .badge-ok  { background:rgba(20,164,77,.1); color:#14a44d; padding:.25rem .7rem; border-radius:999px; font-size:.82rem; font-weight:700; }
+    .badge-no  { background:rgba(16,42,67,.07); color:#52637a; padding:.25rem .7rem; border-radius:999px; font-size:.82rem; font-weight:700; }
+    .subjects-list { display:grid; gap:.75rem; }
+    .subject-item { display:flex; justify-content:space-between; align-items:center; padding:.85rem 1rem; background:rgba(15,75,178,.04); border-radius:14px; border:1px solid rgba(15,75,178,.08); }
+    .subject-item .sub-name { font-weight:700; }
+    .subject-item .sub-meta { font-size:.85rem; color:#52637a; }
+    .empty-note { color:#52637a; text-align:center; padding:1.5rem; }
+    .edit-btn { padding:.65rem 1.4rem; border-radius:14px; border:none; background:linear-gradient(135deg,#0f4bb2,#1f75d1); color:#fff; font-weight:700; cursor:pointer; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">AIQ</div>
+      <div class="brand-text"><h2>AttendIQ</h2><p>Faculty</p></div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+      <a href="attendance.html"><span class="nav-icon">✓</span><span>Attendance</span></a>
+      <a href="sessions.html"><span class="nav-icon">🗓️</span><span>Sessions</span></a>
+      <a href="subjects.html"><span class="nav-icon">📚</span><span>Subjects</span></a>
+      <a href="attendance_report.html"><span class="nav-icon">📊</span><span>Reports</span></a>
+      <a href="profile.html" class="active"><span class="nav-icon">👤</span><span>Profile</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">⇆</button>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title">
+        <h1>My Profile</h1>
+        <p>View your account details, subjects, and biometric status.</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="notification-button" aria-label="Notifications">🔔</button>
+      <div class="user-menu-container">
+        <button type="button" class="user-menu-toggle" aria-expanded="false">
+          <span><strong id="topbarName">Faculty</strong><small>Course instructor</small></span>
+          <span>▾</span>
+        </button>
+        <div class="user-menu">
+          <a href="profile.html">Profile</a>
+          <a href="#logout">Sign out</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-content">
+    <div class="profile-shell">
+      <div class="profile-hero">
+        <div class="avatar" id="avatarEl">?</div>
+        <div class="hero-info">
+          <div class="role-badge">Faculty</div>
+          <h2 id="heroName">Loading…</h2>
+          <div class="meta" id="heroEmail">—</div>
+          <div class="meta" id="heroDept" style="margin-top:.25rem;">—</div>
+        </div>
+        <div style="margin-left:auto;">
+          <button class="edit-btn" onclick="window.location.href='profile_edit.html'">Edit Profile</button>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <h4>Account Details</h4>
+          <div class="info-row"><span class="label">Email</span><span class="value" id="infoEmail">—</span></div>
+          <div class="info-row"><span class="label">Phone</span><span class="value" id="infoPhone">—</span></div>
+          <div class="info-row"><span class="label">Department</span><span class="value" id="infoDept">—</span></div>
+          <div class="info-row"><span class="label">Status</span><span class="value" id="infoStatus">—</span></div>
+        </div>
+        <div class="info-card">
+          <h4>Teaching Stats</h4>
+          <div class="info-row"><span class="label">Subjects Assigned</span><span class="value" id="statSubjects">—</span></div>
+          <div class="info-row"><span class="label">Sessions Conducted</span><span class="value" id="statSessions">—</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div><h2>Assigned Subjects</h2><p>Subjects you are currently teaching.</p></div>
+        </div>
+        <div class="subjects-list" id="subjectsList">
+          <div class="empty-note">Loading subjects…</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/dashboard.js"></script>
+<script>
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  async function loadProfile() {
+    try {
+      const user = await fetchCurrentUser();
+      const initials = (user.full_name||'F').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      document.getElementById('avatarEl').textContent   = initials;
+      document.getElementById('heroName').textContent   = user.full_name || 'Faculty';
+      document.getElementById('heroEmail').textContent  = user.email || '—';
+      document.getElementById('topbarName').textContent = user.full_name?.split(' ')[0] || 'Faculty';
+      document.getElementById('infoEmail').textContent  = user.email || '—';
+      document.getElementById('infoPhone').textContent  = user.phone || '—';
+      document.getElementById('infoStatus').innerHTML   = user.is_active
+        ? '<span class="badge-ok">Active</span>' : '<span class="badge-no">Inactive</span>';
+
+      // Load department name
+      if (user.department_id) {
+        try {
+          const depts = await getDepartments();
+          const dept  = depts.find(d => d.id === user.department_id);
+          const name  = dept ? dept.name : '—';
+          document.getElementById('heroDept').textContent  = name;
+          document.getElementById('infoDept').textContent  = name;
+        } catch(e) { /* ignore */ }
+      }
+
+      // Load assigned subjects
+      await loadSubjects(user.id);
+
+    } catch(e) {
+      console.error('Profile load error:', e);
+      document.getElementById('heroName').textContent = 'Error loading profile';
+    }
+  }
+
+  async function loadSubjects(facultyId) {
+    const list = document.getElementById('subjectsList');
+    try {
+      const all = await getSubjects();
+      const mine = all.filter(s => s.faculty_id === facultyId);
+      document.getElementById('statSubjects').textContent = mine.length;
+
+      // Count sessions
+      try {
+        const sessions = await getAttendanceSessions();
+        const mySessions = sessions.filter(s => s.faculty_id === facultyId);
+        document.getElementById('statSessions').textContent = mySessions.length;
+      } catch(e) { document.getElementById('statSessions').textContent = '—'; }
+
+      if (!mine.length) {
+        list.innerHTML = '<div class="empty-note">No subjects assigned yet.</div>';
+        return;
+      }
+      list.innerHTML = mine.map(s => `
+        <div class="subject-item">
+          <div>
+            <div class="sub-name">${esc(s.name)}</div>
+            <div class="sub-meta">Code: ${esc(s.code)} · Semester ${esc(s.semester||'?')} · Section ${esc(s.section||'?')}</div>
+          </div>
+          <a href="subjects.html" style="font-size:.85rem;color:#0f4bb2;font-weight:600;">View →</a>
+        </div>
+      `).join('');
+    } catch(e) {
+      list.innerHTML = '<div class="empty-note">Could not load subjects.</div>';
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+</body>
+</html>
