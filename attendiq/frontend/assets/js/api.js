@@ -1,34 +1,4 @@
-const API_BASE_URL = (() => {
-  const defaultUrl = "https://securely-masculine-elliptic.ngrok-free.dev";
-  if (typeof window === "undefined") return defaultUrl;
-
-  const { protocol, hostname, port } = window.location;
-  const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
-  const hasHttp = protocol.startsWith("http");
-
-  if (hasHttp && isLocalhost) {
-    return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
-  }
-
-  return defaultUrl;
-})();
-
-function ensureFavicon() {
-  const iconHref = new URL("../assets/images/logo.svg", document.baseURI).href;
-
-  let iconLink = document.querySelector("link[rel~='icon']");
-
-  if (!iconLink) {
-    iconLink = document.createElement("link");
-    iconLink.rel = "icon";
-    iconLink.type = "image/svg+xml";
-    document.head.appendChild(iconLink);
-  }
-
-  iconLink.href = iconHref;
-}
-
-ensureFavicon();
+const API_BASE_URL = "https://securely-masculine-elliptic.ngrok-free.dev";
 
 function getAuthToken() {
   return localStorage.getItem("attendiq_token");
@@ -45,13 +15,11 @@ function getStoredUser() {
 function saveAuthData(token, user) {
   localStorage.setItem("attendiq_token", token);
   localStorage.setItem("attendiq_user", JSON.stringify(user));
-  localStorage.setItem("attendiq_last_login", new Date().toISOString());
 }
 
 function clearAuthData() {
   localStorage.removeItem("attendiq_token");
   localStorage.removeItem("attendiq_user");
-  localStorage.removeItem("attendiq_last_login");
 }
 
 function getAuthHeaders() {
@@ -68,24 +36,55 @@ async function request(path, options = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(url, {
-    method: options.method || "GET",
-    headers: defaultHeaders,
-    body: options.body,
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method: options.method || "GET",
+      headers: defaultHeaders,
+      body: options.body,
+    });
+  } catch (networkErr) {
+    throw new Error("Network error: could not reach the server. Check your connection or API URL.");
+  }
 
   const contentType = response.headers.get("Content-Type") || "";
   const isJson = contentType.includes("application/json");
-  const payload = isJson ? await response.json() : null;
+  let payload = null;
+  try {
+    payload = isJson ? await response.json() : await response.text();
+  } catch (_) {
+    payload = null;
+  }
 
   if (!response.ok) {
-    const message = payload?.detail || payload?.message || response.statusText || "Request failed";
+    // Extract human-readable message from FastAPI error shapes:
+    // { detail: "string" }  or  { detail: [{msg, loc, type}] }  or plain text
+    let message = response.statusText || "Request failed";
+    if (payload) {
+      if (typeof payload === "string") {
+        message = payload;
+      } else if (typeof payload.detail === "string") {
+        message = payload.detail;
+      } else if (Array.isArray(payload.detail)) {
+        // Pydantic validation errors: [{loc, msg, type}]
+        message = payload.detail
+          .map(e => {
+            const loc = e.loc ? e.loc.slice(1).join(" → ") : "";
+            return loc ? `${loc}: ${e.msg}` : e.msg;
+          })
+          .join("; ");
+      } else if (payload.message) {
+        message = payload.message;
+      }
+    }
     const error = new Error(message);
     error.status = response.status;
     error.payload = payload;
     throw error;
   }
 
+  // For DELETE responses that return empty body
+  if (payload === null || payload === "") return { success: true };
   return payload;
 }
 
@@ -287,11 +286,12 @@ async function getSubjectById(id) {
 // ATTENDANCE API FUNCTIONS
 // ============================================================================
 
-async function getAttendanceSessions(subjectId = null) {
+async function getAttendanceSessions(subjectId = null, facultyId = null) {
   const params = new URLSearchParams();
-  if (subjectId) params.set("subject_id", subjectId);
+  if (subjectId)  params.set("subject_id",  subjectId);
+  if (facultyId)  params.set("faculty_id",  facultyId);
   const query = params.toString();
-  return request(`/attendance/sessions${query ? `?${query}` : ""}`);
+  return request(`/attendance/sessions${query ? "?" + query : ""}`);
 }
 
 async function getAttendanceSession(sessionId) {

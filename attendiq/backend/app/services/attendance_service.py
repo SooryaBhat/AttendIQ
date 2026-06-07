@@ -1,11 +1,15 @@
 # ============================================================
-#  AttendIQ — Attendance Service
-#  File: backend/app/services/attendance_service.py
-#  SDK FIX: See student_service.py header for full explanation.
+#  AttendIQ — Attendance Service  (complete rewrite)
+#  Root causes fixed:
+#  1. attendance_sessions has NO department_id / method columns
+#     → removed from insert payload
+#  2. attendance_records has no method/confidence/subject_id cols
+#     → insert only columns that exist in schema
+#  3. start/end session uses wrong column name (completed_at vs end_time)
+#  4. list_sessions must filter by faculty when needed
 # ============================================================
 
 import logging
-import math
 from uuid import uuid4
 from datetime import datetime
 from typing import Optional, List
@@ -16,11 +20,17 @@ from app.models.attendance import (
     AttendanceSessionResponse,
     AttendanceRecordResponse,
 )
-from app.services.face_service import recognize_faces
-from app.services.face_service import recognize_face
-from app.services.voice_service import recognize_voice
 
 logger = logging.getLogger(__name__)
+
+# ── Schema-safe column sets ───────────────────────────────────────────────────
+# attendance_sessions actual columns (from schema.sql):
+#   id, subject_id, faculty_id, session_date, start_time, end_time,
+#   session_label, status, qr_code, created_at, updated_at
+#
+# attendance_records actual columns (from schema.sql):
+#   id, session_id, student_id, status, marked_by, marked_at,
+#   face_match_score, voice_match_score, created_at
 
 
 def _build_session_response(row: dict) -> AttendanceSessionResponse:
@@ -28,11 +38,11 @@ def _build_session_response(row: dict) -> AttendanceSessionResponse:
         id=row["id"],
         subject_id=row["subject_id"],
         faculty_id=row.get("faculty_id"),
-        session_label=row.get("session_label"),
+        session_label=row.get("session_label") or "",
         session_date=row.get("session_date"),
-        started_at=row.get("started_at"),
-        completed_at=row.get("completed_at"),
-        status=row.get("status", "created"),
+        started_at=row.get("start_time"),       # schema uses start_time
+        completed_at=row.get("end_time"),        # schema uses end_time
+        status=row.get("status", "scheduled"),
         created_at=row.get("created_at"),
     )
 
@@ -42,14 +52,12 @@ def _build_record_response(row: dict) -> AttendanceRecordResponse:
         id=row["id"],
         session_id=row["session_id"],
         student_id=row["student_id"],
-        status=row.get("status"),
+        status=row.get("status", "unmarked"),
         marked_at=row.get("marked_at"),
     )
 
 
 def _get_session_row(session_id: str) -> dict:
-    """Helper: fetch a session row directly — used after update to return data."""
-    session_id = str(session_id)
     resp = (
         supabase.table("attendance_sessions")
         .select("*")
@@ -58,75 +66,63 @@ def _get_session_row(session_id: str) -> dict:
         .execute()
     )
     if not resp.data:
-        raise ValueError("Session not found.")
+        raise ValueError(f"Session {session_id} not found.")
     return resp.data
 
 
 def create_session(payload: AttendanceSessionCreate) -> AttendanceSessionResponse:
-    data = payload.dict()
-    data["id"] = str(uuid4())
+    """
+    Insert only columns that exist in the DB schema.
+    Ignore: department_id, method, total_students, present_count,
+            absent_count, processing_log, started_at, completed_at.
+    """
+    data = {
+        "id":            str(uuid4()),
+        "subject_id":    str(payload.subject_id),
+        "faculty_id":    str(payload.faculty_id),
+        "session_date":  payload.session_date.isoformat() if payload.session_date else None,
+        "session_label": payload.session_label,
+        "status":        payload.status or "scheduled",
+    }
 
-    # ensure UUIDs are serialized to strings for Supabase
-    data["subject_id"] = str(data["subject_id"])
-    data["faculty_id"] = str(data["faculty_id"])
-    data["department_id"] = str(data["department_id"])
-
-    # set DB defaults for counts/status
-    data.setdefault("method", "face")
-    data.setdefault("status", "pending")
-    data.setdefault("total_students", 0)
-    data.setdefault("present_count", 0)
-    data.setdefault("absent_count", 0)
-
-    # ensure dates/datetimes are sent as ISO strings (Supabase client requires JSON-serializable values)
-    if data.get("session_date") is not None:
-        data["session_date"] = data["session_date"].isoformat()
-    if data.get("started_at") is not None:
-        data["started_at"] = data["started_at"].isoformat()
-    if data.get("completed_at") is not None:
-        data["completed_at"] = data["completed_at"].isoformat()
-
-    # FIX: .insert(data).execute()  — no .select("*")
     response = supabase.table("attendance_sessions").insert(data).execute()
 
     if not response.data:
-        logger.error("create_session: insert returned no data")
-        raise RuntimeError("Unable to create session.")
+        logger.error("create_session: insert returned no data — %s", response)
+        raise RuntimeError("Unable to create session — database insert returned no data.")
 
     created = response.data[0] if isinstance(response.data, list) else response.data
     return _build_session_response(created)
 
 
 def start_session(session_id: str) -> AttendanceSessionResponse:
-    now = datetime.utcnow().isoformat()
+    now = datetime.utcnow().strftime("%H:%M:%S")  # start_time is TIME type
     session_id = str(session_id)
 
-    # FIX: .update(data).eq(...).execute()  — no .select("*").single()
     response = (
         supabase.table("attendance_sessions")
-        .update({"status": "processing", "started_at": now})
+        .update({"status": "active", "start_time": now})
         .eq("id", session_id)
         .execute()
     )
     if not response.data:
-        raise ValueError("Session not found.")
+        raise ValueError("Session not found or could not be started.")
 
     return _build_session_response(_get_session_row(session_id))
 
 
 def end_session(session_id: str) -> AttendanceSessionResponse:
-    now = datetime.utcnow().isoformat()
+    now = datetime.utcnow().strftime("%H:%M:%S")  # end_time is TIME type
     session_id = str(session_id)
 
-    # FIX: .update(data).eq(...).execute()  — no .select("*").single()
     response = (
         supabase.table("attendance_sessions")
-        .update({"status": "completed", "completed_at": now})
+        .update({"status": "completed", "end_time": now})
         .eq("id", session_id)
         .execute()
     )
     if not response.data:
-        raise ValueError("Session not found.")
+        raise ValueError("Session not found or could not be ended.")
 
     return _build_session_response(_get_session_row(session_id))
 
@@ -140,206 +136,73 @@ def delete_session(session_id: str) -> dict:
         .eq("id", session_id)
         .execute()
     )
-    if not response.data:
-        raise ValueError("Session not found.")
     return {"deleted": True}
 
 
-def list_sessions(subject_id: Optional[str] = None) -> List[AttendanceSessionResponse]:
+def list_sessions(
+    subject_id: Optional[str] = None,
+    faculty_id: Optional[str] = None,
+) -> List[AttendanceSessionResponse]:
     query = supabase.table("attendance_sessions").select("*")
     if subject_id:
-        subject_id = str(subject_id)
-        query = query.eq("subject_id", subject_id)
+        query = query.eq("subject_id", str(subject_id))
+    if faculty_id:
+        query = query.eq("faculty_id", str(faculty_id))
 
-    response = query.execute()
+    response = query.order("created_at", desc=True).execute()
     rows = response.data or []
     return [_build_session_response(r) for r in rows]
 
 
 def get_session(session_id: str) -> AttendanceSessionResponse:
-    session_id = str(session_id)
-    response = (
-        supabase.table("attendance_sessions")
-        .select("*")
-        .eq("id", session_id)
-        .single()
-        .execute()
-    )
-    if not response.data:
-        raise ValueError("Session not found.")
-    return _build_session_response(response.data)
+    return _build_session_response(_get_session_row(str(session_id)))
 
 
-def _get_subject_enrolled_student_ids(subject_id: str) -> list[str]:
-    response = (
-        supabase.table("subject_enrollments")
+def _get_enrolled_student_ids(subject_id: str) -> list:
+    """Query student_subjects (the actual table in schema.sql)."""
+    resp = (
+        supabase.table("student_subjects")
         .select("student_id")
         .eq("subject_id", str(subject_id))
         .execute()
     )
-    return [row["student_id"] for row in (response.data or [])]
+    return [r["student_id"] for r in (resp.data or [])]
 
 
-def _get_student_names(student_ids: list[str]) -> dict[str, str]:
+def _get_student_names(student_ids: list) -> dict:
     if not student_ids:
         return {}
-
-    response = (
+    resp = (
         supabase.table("profiles")
         .select("id, full_name")
         .in_("id", student_ids)
         .execute()
     )
-    return {row["id"]: row.get("full_name", "") for row in (response.data or [])}
-
-
-def group_face_checkin(session_id: str, image_bytes: bytes) -> dict:
-    session_id = str(session_id)
-    session = _get_session_row(session_id)
-    subject_id = session.get("subject_id")
-    if not subject_id:
-        raise ValueError("Attendance session does not have an associated subject.")
-
-    enrolled_student_ids = _get_subject_enrolled_student_ids(subject_id)
-    if not enrolled_student_ids:
-        return {
-            "present_count": 0,
-            "absent_count": 0,
-            "attendance_percentage": 0.0,
-            "present_students": [],
-            "absent_students": [],
-        }
-
-    student_names = _get_student_names(enrolled_student_ids)
-    recognized = recognize_faces(image_bytes=image_bytes, student_ids=enrolled_student_ids)
-
-    present_students = []
-    present_set = set()
-    for match in recognized:
-        student_id = match.get("student_id")
-        if not student_id or student_id in present_set:
-            continue
-        present_set.add(student_id)
-        present_students.append({
-            "student_id": student_id,
-            "name": student_names.get(student_id, "Unknown"),
-            "confidence": float(match.get("confidence", 0.0)),
-        })
-        mark_attendance(
-            session_id=session_id,
-            student_id=str(student_id),
-            attendance_status="present",
-            method="face",
-            confidence=float(match.get("confidence", 0.0)),
-        )
-
-    absent_students = [
-        {"student_id": sid, "name": student_names.get(sid, "Unknown")}
-        for sid in enrolled_student_ids
-        if sid not in present_set
-    ]
-
-    total_students = len(enrolled_student_ids)
-    attendance_percentage = round((len(present_students) / total_students) * 100.0, 2) if total_students else 0.0
-
-    return {
-        "present_count": len(present_students),
-        "absent_count": len(absent_students),
-        "attendance_percentage": attendance_percentage,
-        "present_students": present_students,
-        "absent_students": absent_students,
-    }
-
-
-def face_checkin(session_id: str, image_bytes: bytes) -> dict:
-    session_id = str(session_id)
-    try:
-        recognition = recognize_face(image_bytes)
-    except ValueError:
-        return {"attendance_marked": False, "reason": "face_not_recognized"}
-
-    if not recognition.get("matched"):
-        return {"attendance_marked": False, "reason": "face_not_recognized"}
-
-    student_id = str(recognition["student_id"])
-    confidence = float(recognition.get("confidence", 0.0))
-
-    mark_attendance(
-        session_id=session_id,
-        student_id=student_id,
-        attendance_status="present",
-        method="face",
-        confidence=confidence,
-    )
-
-    return {
-        "attendance_marked": True,
-        "student_id": student_id,
-        "confidence": confidence,
-        "session_id": session_id,
-    }
-
-
-def voice_checkin(session_id: str, audio_bytes: bytes, original_filename: str = "recording.wav") -> dict:
-    session_id = str(session_id)
-    recognition = recognize_voice(audio_bytes=audio_bytes, original_filename=original_filename)
-
-    if not recognition.get("matched"):
-        return {"attendance_marked": False, "reason": "voice_not_recognized"}
-
-    student_id = str(recognition["student_id"])
-    confidence = float(recognition.get("confidence", 0.0))
-    print(f"DEBUG voice_checkin confidence={confidence}")
-
-    if math.isnan(confidence) or math.isinf(confidence):
-        confidence = 0.0
-
-    confidence = max(0.0, min(confidence, 1.0))
-
-    mark_attendance(
-        session_id=session_id,
-        student_id=student_id,
-        attendance_status="present",
-        method="voice",
-        confidence=confidence,
-    )
-
-    return {
-        "attendance_marked": True,
-        "student_id": student_id,
-        "confidence": confidence,
-        "session_id": session_id,
-    }
+    return {r["id"]: r.get("full_name", "") for r in (resp.data or [])}
 
 
 def mark_attendance(
     session_id: str,
     student_id: str,
     attendance_status: str,
-    method: str = "face",
+    method: str = "manual",
     confidence: float = 1.0,
 ) -> AttendanceRecordResponse:
-    # normalize IDs to strings for Supabase
+    """
+    Insert/update an attendance record.
+    Only uses columns that exist in schema:
+      id, session_id, student_id, status, marked_by, marked_at,
+      face_match_score, voice_match_score
+    """
     session_id = str(session_id)
     student_id = str(student_id)
-
-    # validate session and capture related subject/department IDs
-    s = (
-        supabase.table("attendance_sessions")
-        .select("id,subject_id,department_id")
-        .eq("id", session_id)
-        .single()
-        .execute()
-    )
-    if not s.data:
-        raise ValueError("Session not found.")
-
-    subject_id = s.data.get("subject_id")
-    department_id = s.data.get("department_id")
-
     now = datetime.utcnow().isoformat()
 
-    # check existing record
+    # Map method → score column
+    face_score  = float(confidence) if method == "face"  else None
+    voice_score = float(confidence) if method == "voice" else None
+
+    # Check existing
     exist = (
         supabase.table("attendance_records")
         .select("id")
@@ -348,79 +211,57 @@ def mark_attendance(
         .execute()
     )
 
-    confidence = float(confidence)
-
     if exist.data:
-        # UPDATE existing — FIX: no .select("*").single() after .eq()
-        supabase.table("attendance_records").update(
-            {
-                "status": attendance_status,
-                "marked_at": now,
-                "method": method,
-                "confidence": confidence,
-            }
-        ).eq("session_id", session_id).eq("student_id", student_id).execute()
+        update_data = {
+            "status":    attendance_status,
+            "marked_at": now,
+            "marked_by": method,
+        }
+        if face_score  is not None: update_data["face_match_score"]  = face_score
+        if voice_score is not None: update_data["voice_match_score"] = voice_score
 
-        # Re-fetch updated record
+        supabase.table("attendance_records").update(update_data).eq(
+            "session_id", session_id).eq("student_id", student_id).execute()
+
         updated = (
             supabase.table("attendance_records")
-            .select("*")
-            .eq("session_id", session_id)
-            .eq("student_id", student_id)
-            .single()
-            .execute()
+            .select("*").eq("session_id", session_id).eq("student_id", student_id)
+            .single().execute()
         )
         return _build_record_response(updated.data)
     else:
         record = {
-            "id":             str(uuid4()),
-            "session_id":    session_id,
-            "student_id":    student_id,
-            "subject_id":    subject_id,
-            "department_id": department_id,
-            "status":        attendance_status,
-            "method":        method,
-            "confidence":    confidence,
-            "marked_at":     now,
+            "id":         str(uuid4()),
+            "session_id": session_id,
+            "student_id": student_id,
+            "status":     attendance_status,
+            "marked_by":  method,
+            "marked_at":  now,
         }
-        # FIX: .insert(data).execute()  — no .select("*")
+        if face_score  is not None: record["face_match_score"]  = face_score
+        if voice_score is not None: record["voice_match_score"] = voice_score
+
         resp = supabase.table("attendance_records").insert(record).execute()
-
         if not resp.data:
-            logger.error("mark_attendance: insert returned no data")
-            raise RuntimeError("Unable to mark attendance.")
-
+            raise RuntimeError("Unable to mark attendance — insert returned no data.")
         created = resp.data[0] if isinstance(resp.data, list) else resp.data
         return _build_record_response(created)
 
 
 def get_session_attendance(session_id: str) -> List[AttendanceRecordResponse]:
-    session_id = str(session_id)
     resp = (
         supabase.table("attendance_records")
         .select("*")
-        .eq("session_id", session_id)
+        .eq("session_id", str(session_id))
         .execute()
     )
-    rows = resp.data or []
-    return [_build_record_response(r) for r in rows]
+    return [_build_record_response(r) for r in (resp.data or [])]
 
 
-def get_student_history(student_id: str) -> List[dict]:
-    """Return attendance history for a given student (newest first).
-
-    Returns a list of dicts matching the frontend contract:
-    {
-      "attendance_id": "...",
-      "session_id": "...",
-      "session_name": "...",
-      "subject_name": "...",
-      "attendance_status": "present",
-      "method": "face",
-      "confidence": 0.95,
-      "marked_at": "...",
-      "session_date": "..."
-    }
+def get_student_history(student_id: str) -> list:
+    """
+    Rich attendance history for a student.
+    Joins records → sessions → subjects in Python (Supabase free tier has no joins).
     """
     student_id = str(student_id)
     resp = (
@@ -434,48 +275,116 @@ def get_student_history(student_id: str) -> List[dict]:
     if not rows:
         return []
 
-    # collect session ids
-    session_ids = list({r.get("session_id") for r in rows if r.get("session_id")})
-
+    session_ids = list({r["session_id"] for r in rows if r.get("session_id")})
     sessions_map = {}
     if session_ids:
-        sresp = (
+        sr = (
             supabase.table("attendance_sessions")
-            .select("id,session_label,session_date,subject_id")
+            .select("id, session_label, session_date, subject_id")
             .in_("id", session_ids)
             .execute()
         )
-        for s in (sresp.data or []):
-            sessions_map[s["id"]] = s
+        sessions_map = {s["id"]: s for s in (sr.data or [])}
 
-    # collect subject ids from sessions
-    subject_ids = list({sessions_map[sid].get("subject_id") for sid in sessions_map if sessions_map[sid].get("subject_id")})
+    subject_ids = list({s.get("subject_id") for s in sessions_map.values() if s.get("subject_id")})
     subjects_map = {}
     if subject_ids:
-        subresp = (
+        sub_r = (
             supabase.table("subjects")
-            .select("id,name")
+            .select("id, name")
             .in_("id", subject_ids)
             .execute()
         )
-        for sub in (subresp.data or []):
-            subjects_map[sub["id"]] = sub.get("name")
+        subjects_map = {s["id"]: s.get("name") for s in (sub_r.data or [])}
 
     result = []
     for r in rows:
         sid = r.get("session_id")
-        session = sessions_map.get(sid) or {}
-        subject_name = subjects_map.get(session.get("subject_id")) if session else None
+        session = sessions_map.get(sid, {})
         result.append({
-            "attendance_id": r.get("id"),
-            "session_id": sid,
-            "session_name": session.get("session_label"),
-            "subject_name": subject_name,
+            "attendance_id":    r.get("id"),
+            "session_id":       sid,
+            "session_name":     session.get("session_label"),
+            "subject_name":     subjects_map.get(session.get("subject_id")),
             "attendance_status": r.get("status"),
-            "method": r.get("method"),
-            "confidence": float(r.get("confidence")) if r.get("confidence") is not None else None,
-            "marked_at": r.get("marked_at"),
-            "session_date": session.get("session_date"),
+            "method":           r.get("marked_by"),
+            "confidence":       r.get("face_match_score") or r.get("voice_match_score"),
+            "marked_at":        r.get("marked_at"),
+            "session_date":     session.get("session_date"),
         })
-
     return result
+
+
+# ── Biometric check-in wrappers (lazy import so deploy works without ML libs) ─
+
+def face_checkin(session_id: str, image_bytes: bytes) -> dict:
+    try:
+        from app.services.face_service import recognize_face
+        recognition = recognize_face(image_bytes)
+    except ImportError:
+        return {"attendance_marked": False, "reason": "Face recognition not available on this deployment."}
+    except ValueError:
+        return {"attendance_marked": False, "reason": "No face detected in image."}
+
+    if not recognition.get("matched"):
+        return {"attendance_marked": False, "reason": "Face not recognized."}
+
+    student_id = str(recognition["student_id"])
+    confidence = float(recognition.get("confidence", 0.0))
+    mark_attendance(session_id, student_id, "present", "face", confidence)
+    return {"attendance_marked": True, "student_id": student_id, "confidence": confidence, "session_id": session_id}
+
+
+def voice_checkin(session_id: str, audio_bytes: bytes, original_filename: str = "recording.wav") -> dict:
+    try:
+        from app.services.voice_service import recognize_voice
+        recognition = recognize_voice(audio_bytes=audio_bytes, original_filename=original_filename)
+    except ImportError:
+        return {"attendance_marked": False, "reason": "Voice recognition not available on this deployment."}
+
+    if not recognition.get("matched"):
+        return {"attendance_marked": False, "reason": "Voice not recognized."}
+
+    student_id = str(recognition["student_id"])
+    confidence = float(recognition.get("confidence", 0.0))
+    import math
+    if math.isnan(confidence) or math.isinf(confidence):
+        confidence = 0.0
+    confidence = max(0.0, min(confidence, 1.0))
+    mark_attendance(session_id, student_id, "present", "voice", confidence)
+    return {"attendance_marked": True, "student_id": student_id, "confidence": confidence, "session_id": session_id}
+
+
+def group_face_checkin(session_id: str, image_bytes: bytes) -> dict:
+    try:
+        from app.services.face_service import recognize_faces
+    except ImportError:
+        return {"present_count": 0, "absent_count": 0, "attendance_percentage": 0.0,
+                "present_students": [], "absent_students": [],
+                "error": "Face recognition not available on this deployment."}
+
+    session_id = str(session_id)
+    session = _get_session_row(session_id)
+    subject_id = session.get("subject_id")
+
+    enrolled = _get_enrolled_student_ids(subject_id) if subject_id else []
+    names = _get_student_names(enrolled)
+
+    recognized = recognize_faces(image_bytes=image_bytes, student_ids=enrolled)
+
+    present_set = set()
+    present_list = []
+    for match in recognized:
+        sid = match.get("student_id")
+        if sid and sid not in present_set:
+            present_set.add(sid)
+            present_list.append({"student_id": sid, "name": names.get(sid, "Unknown"),
+                                  "confidence": float(match.get("confidence", 0.0))})
+            mark_attendance(session_id, sid, "present", "face", float(match.get("confidence", 0.0)))
+
+    absent_list = [{"student_id": sid, "name": names.get(sid, "Unknown")}
+                   for sid in enrolled if sid not in present_set]
+    total = len(enrolled)
+    pct = round(len(present_list) / total * 100, 2) if total else 0.0
+    return {"present_count": len(present_list), "absent_count": len(absent_list),
+            "attendance_percentage": pct, "present_students": present_list, "absent_students": absent_list}

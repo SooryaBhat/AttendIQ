@@ -35,6 +35,7 @@
             <span class="nav-icon">📚</span>
             <span>Subjects</span>
           </a>
+          <a href="profile.html"><span class="nav-icon">👤</span><span>Profile</span></a>
           <a href="attendance_report.html">
             <span class="nav-icon">📊</span>
             <span>Reports</span>
@@ -172,12 +173,15 @@
         initSessionsPage();
       });
 
+      let _currentUser = null; // page-scoped user reference
+
       async function initSessionsPage() {
         const token = localStorage.getItem('attendiq_token');
         if (!token) return window.location.href = '../auth/login.html';
 
         try {
-          await fetchCurrentUser();
+          _currentUser = await fetchCurrentUser();
+          localStorage.setItem('attendiq_user', JSON.stringify(_currentUser));
         } catch (err) {
           localStorage.removeItem('attendiq_token');
           localStorage.removeItem('attendiq_user');
@@ -204,13 +208,21 @@
 
       async function loadSubjects() {
         try {
-          const subjects = await getSubjects();
+          const allSubjects = await getSubjects();
+          // Show only subjects assigned to this faculty
+          const subjects = _currentUser
+            ? allSubjects.filter(s => s.faculty_id === _currentUser.id)
+            : allSubjects;
           const filter = document.getElementById('filterSubject');
           const modalSel = document.getElementById('modalSubjectSelect');
-          filter.innerHTML = '<option value="">All subjects</option>' + subjects.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('');
-          modalSel.innerHTML = subjects.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('');
+          filter.innerHTML = '<option value="">All subjects</option>' + subjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.code)})</option>`).join('');
+          if (!subjects.length) {
+            modalSel.innerHTML = '<option value="">No subjects assigned — contact your admin</option>';
+          } else {
+            modalSel.innerHTML = subjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.code)})</option>`).join('');
+          }
         } catch (err) {
-          console.error(err);
+          console.error('loadSubjects error:', err.message);
         }
       }
 
@@ -222,7 +234,7 @@
 
         try {
           const subjectFilter = document.getElementById('filterSubject').value || null;
-          const sessions = await getAttendanceSessions(subjectFilter);
+          const sessions = await getAttendanceSessions(subjectFilter, _currentUser?.id);
           renderStats(sessions);
           renderSessionsTable(sessions);
           loading.style.display = 'none';
@@ -284,12 +296,28 @@
         if (!name || !subject || !date) return alert('Please provide session name, subject and date.');
 
         try {
-          const payload = { session_label: name, subject_id: subject, session_date: date, start_time: start||null, end_time: end||null };
+          if (!_currentUser) throw new Error('Not authenticated. Please refresh the page.');
+
+          // Find department_id from the selected subject (subjects carry department_id)
+          const allSubjects = await getSubjects();
+          const selectedSubject = allSubjects.find(s => s.id === subject);
+          const deptId = selectedSubject?.department_id || _currentUser.department_id;
+
+          if (!deptId) throw new Error('Cannot determine department. Please contact your admin.');
+
+          const payload = {
+            session_label: name,
+            subject_id: subject,
+            faculty_id: _currentUser.id,
+            department_id: deptId,
+            session_date: date,
+            method: 'face',
+          };
           await createAttendanceSession(payload);
           showModal(false);
           await refreshSessions();
         } catch (err) {
-          alert(err.message||'Failed to create session.');
+          alert(err.message || 'Failed to create session.');
         }
       }
 
