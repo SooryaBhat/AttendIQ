@@ -1,11 +1,16 @@
+const LOCAL_API_BASE_URL = "http://127.0.0.1:8000";
 const API_BASE_URL = window.location.protocol.startsWith("http")
-  ? window.location.origin
-  : "https://securely-masculine-elliptic.ngrok-free.dev";
+  ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? LOCAL_API_BASE_URL
+      : window.location.origin)
+  : LOCAL_API_BASE_URL;
 
 function ensureFavicon() {
   const origin = window.location.protocol.startsWith("http")
-    ? window.location.origin
-    : "https://securely-masculine-elliptic.ngrok-free.dev";
+    ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? LOCAL_API_BASE_URL
+        : window.location.origin)
+    : LOCAL_API_BASE_URL;
   const iconHref = new URL("/assets/images/logo.svg", origin).href;
   let iconLink = document.querySelector("link[rel~='icon']");
   if (!iconLink) {
