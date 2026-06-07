@@ -1,4 +1,23 @@
-const API_BASE_URL = "https://securely-masculine-elliptic.ngrok-free.dev";
+const API_BASE_URL = window.location.protocol.startsWith("http")
+  ? window.location.origin
+  : "https://securely-masculine-elliptic.ngrok-free.dev";
+
+function ensureFavicon() {
+  const origin = window.location.protocol.startsWith("http")
+    ? window.location.origin
+    : "https://securely-masculine-elliptic.ngrok-free.dev";
+  const iconHref = new URL("/assets/images/logo.svg", origin).href;
+  let iconLink = document.querySelector("link[rel~='icon']");
+  if (!iconLink) {
+    iconLink = document.createElement("link");
+    iconLink.rel = "icon";
+    iconLink.type = "image/svg+xml";
+    document.head.appendChild(iconLink);
+  }
+  iconLink.href = iconHref;
+}
+
+ensureFavicon();
 
 function getAuthToken() {
   return localStorage.getItem("attendiq_token");

@@ -111,9 +111,14 @@
                 <label for="subjectSemester">Semester</label>
                 <select id="subjectSemester" name="subjectSemester" required>
                   <option value="">Select semester</option>
-                  <option>Spring 2026</option>
-                  <option>Summer 2026</option>
-                  <option>Fall 2026</option>
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                  <option value="3">Semester 3</option>
+                  <option value="4">Semester 4</option>
+                  <option value="5">Semester 5</option>
+                  <option value="6">Semester 6</option>
+                  <option value="7">Semester 7</option>
+                  <option value="8">Semester 8</option>
                 </select>
               </div>
               <div class="form-row">
@@ -204,6 +209,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
     <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/api.js"></script>
     <script src="../assets/js/subjects.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const token = localStorage.getItem('attendiq_token');
+        if (!token) return window.location.href = '../auth/login.html';
+
+        try {
+          const user = await fetchCurrentUser();
+          if (!user) throw new Error('Unable to resolve user');
+          localStorage.setItem('attendiq_user', JSON.stringify(user));
+          await loadFacultySubjects(user);
+
+          document.getElementById('subjectForm').addEventListener('submit', submitSubjectForm);
+          document.getElementById('resetSubjectForm').addEventListener('click', clearCreateForm);
+          document.getElementById('closeShareDialog').addEventListener('click', closeShareDialog);
+          document.getElementById('copySubjectCode').addEventListener('click', () => copyToClipboard(document.getElementById('shareSubjectCode').value, 'shareStatus'));
+          document.getElementById('copyJoinLink').addEventListener('click', () => copyToClipboard(document.getElementById('shareJoinLink').value, 'shareStatus'));
+          document.getElementById('downloadQrCode').addEventListener('click', downloadQrCode);
+          document.getElementById('shareSubjectButton').addEventListener('click', shareSubject);
+        } catch (err) {
+          console.error(err);
+          localStorage.removeItem('attendiq_token');
+          window.location.href = '../auth/login.html';
+        }
+      });
+    </script>
   </body>
 </html>

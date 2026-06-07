@@ -72,13 +72,13 @@
             <div class="chart-card">
               <h4>Students by Department</h4>
               <canvas id="chartStudentsByDept" height="220"></canvas>
-              <div id="chartStudentsByDeptPlaceholder" class="placeholder" style="display:none">Analytics unavailable. TODO: connect `/analytics/students-by-department` backend endpoint.</div>
+              <div id="chartStudentsByDeptPlaceholder" class="placeholder" style="display:none">Analytics unavailable. No data available.</div>
             </div>
 
             <div class="chart-card" style="margin-top:1rem;">
               <h4>Attendance Trend</h4>
               <canvas id="chartAttendanceTrend" height="160"></canvas>
-              <div id="chartAttendanceTrendPlaceholder" class="placeholder" style="display:none">Analytics unavailable. TODO: connect `/analytics/attendance-trend` backend endpoint.</div>
+              <div id="chartAttendanceTrendPlaceholder" class="placeholder" style="display:none">Analytics unavailable. No data available.</div>
             </div>
           </div>
 
@@ -86,12 +86,12 @@
             <div class="chart-card">
               <h4>Department Attendance Comparison</h4>
               <canvas id="chartDeptComparison" height="280"></canvas>
-              <div id="chartDeptComparisonPlaceholder" class="placeholder" style="display:none">Analytics unavailable. TODO: connect `/analytics/department-comparison` backend endpoint.</div>
+              <div id="chartDeptComparisonPlaceholder" class="placeholder" style="display:none">Analytics unavailable. No data available.</div>
             </div>
 
             <div class="table-card" style="margin-top:1rem;">
               <h4>Top Attendance Students</h4>
-              <div id="topStudentsPlaceholder" class="placeholder" style="display:none">TODO: connect `/attendance/top-students` endpoint.</div>
+              <div id="topStudentsPlaceholder" class="placeholder" style="display:none">No top attendance data available.</div>
               <table id="topStudentsTable" class="table" style="display:none">
                 <thead><tr><th>Student</th><th>Department</th><th>Attendance %</th></tr></thead>
                 <tbody id="topStudentsBody"></tbody>
@@ -100,7 +100,7 @@
 
             <div class="table-card" style="margin-top:1rem;">
               <h4>Low Attendance Students</h4>
-              <div id="lowStudentsPlaceholder" class="placeholder" style="display:none">TODO: connect `/attendance/low-students` endpoint.</div>
+              <div id="lowStudentsPlaceholder" class="placeholder" style="display:none">No low attendance data available.</div>
               <table id="lowStudentsTable" class="table" style="display:none">
                 <thead><tr><th>Student</th><th>Department</th><th>Attendance %</th></tr></thead>
                 <tbody id="lowStudentsBody"></tbody>
@@ -177,7 +177,7 @@
       // Tables (top/low attendance)
       async function loadTopLowStudents(){
         try{
-          const top = await request('/attendance/top-students');
+          const top = await request('/analytics/top-students');
           if (Array.isArray(top) && top.length){
             document.getElementById('topStudentsPlaceholder').style.display='none';
             const tb = document.getElementById('topStudentsBody'); tb.innerHTML='';
@@ -187,7 +187,7 @@
         }catch(e){ document.getElementById('topStudentsPlaceholder').style.display='block'; }
 
         try{
-          const low = await request('/attendance/low-students');
+          const low = await request('/analytics/low-students');
           if (Array.isArray(low) && low.length){
             document.getElementById('lowStudentsPlaceholder').style.display='none';
             const tb = document.getElementById('lowStudentsBody'); tb.innerHTML='';

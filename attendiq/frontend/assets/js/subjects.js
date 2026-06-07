@@ -1,82 +1,37 @@
-const facultySubjects = [
-  {
-    id: "SUBJ-AI01",
-    name: "Artificial Intelligence Fundamentals",
-    code: "AI-2026",
-    semester: "Spring 2026",
-    section: "A1",
-    enrolled: 82,
-    description: "Introductory AI concepts and algorithms.",
-    joinLink: "https://attendiq.local/join/AI-2026",
-    status: "Active",
-  },
-  {
-    id: "SUBJ-NET02",
-    name: "Computer Networks",
-    code: "NET-2026",
-    semester: "Spring 2026",
-    section: "B2",
-    enrolled: 64,
-    description: "Network design, protocols, and campus infrastructure.",
-    joinLink: "https://attendiq.local/join/NET-2026",
-    status: "Active",
-  },
-  {
-    id: "SUBJ-DB03",
-    name: "Database Systems",
-    code: "DB-2026",
-    semester: "Fall 2026",
-    section: "C3",
-    enrolled: 57,
-    description: "Relational databases, SQL, and data modeling.",
-    joinLink: "https://attendiq.local/join/DB-2026",
-    status: "Active",
-  },
-];
-
-const studentSubjects = [
-  {
-    id: "STU-AI01",
-    name: "Artificial Intelligence Fundamentals",
-    code: "AI-2026",
-    instructor: "Dr. Priya Rao",
-    progress: "Joined",
-  },
-  {
-    id: "STU-DB03",
-    name: "Database Systems",
-    code: "DB-2026",
-    instructor: "Prof. Arun Singh",
-    progress: "Joined",
-  },
-];
-
+let facultySubjects = [];
+let studentSubjects = [];
 let currentShareSubject = null;
 let editingSubjectId = null;
 let html5QrCode = null;
 let qrScanning = false;
+let facultyCurrentUser = null;
 
 function renderFacultySubjects() {
   const list = document.getElementById("facultySubjectList");
   if (!list) return;
+
+  if (!facultySubjects.length) {
+    list.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:#64748b;">No subjects found for your account.</td></tr>';
+    return;
+  }
 
   list.innerHTML = facultySubjects
     .map(
       (subject) => `
       <tr data-subject-id="${subject.id}">
         <td>
-          <strong>${subject.name}</strong>
-          <div class="status-text">${subject.semester} · Section ${subject.section}</div>
+          <strong>${escapeHtml(subject.name)}</strong>
+          <div class="status-text">Semester ${escapeHtml(String(subject.semester))} · Section ${escapeHtml(subject.section || '—')}</div>
         </td>
-        <td>${subject.code}</td>
-        <td>${subject.enrolled}</td>
-        <td><span class="status-pill active">${subject.status}</span></td>
+        <td>${escapeHtml(subject.code)}</td>
+        <td>${escapeHtml(String(subject.enrolled ?? 0))}</td>
+        <td><span class="status-pill active">${escapeHtml(subject.status || 'Active')}</span></td>
         <td>
           <div class="action-buttons">
             <button type="button" class="action-button" data-action="view" data-id="${subject.id}">View</button>
             <button type="button" class="action-button" data-action="edit" data-id="${subject.id}">Edit</button>
             <button type="button" class="action-button alert" data-action="delete" data-id="${subject.id}">Delete</button>
-            <button type="button" class="action-button" data-action="qr" data-id="${subject.id}">Generate QR</button>
+            <button type="button" class="action-button" data-action="qr" data-id="${subject.id}">QR</button>
             <button type="button" class="action-button positive" data-action="share" data-id="${subject.id}">Share</button>
           </div>
         </td>
@@ -96,14 +51,19 @@ function renderStudentSubjects() {
   const list = document.getElementById("studentSubjectList");
   if (!list) return;
 
+  if (!studentSubjects.length) {
+    list.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">No enrolled subjects found.</td></tr>';
+    return;
+  }
+
   list.innerHTML = studentSubjects
     .map(
       (subject) => `
       <tr>
-        <td>${subject.name}</td>
-        <td>${subject.code}</td>
-        <td>${subject.instructor}</td>
-        <td><span class="status-pill active">${subject.progress}</span></td>
+        <td>${escapeHtml(subject.name)}</td>
+        <td>${escapeHtml(subject.code)}</td>
+        <td>${escapeHtml(subject.instructor || 'Faculty')}</td>
+        <td><span class="status-pill active">${escapeHtml(subject.progress || 'Enrolled')}</span></td>
       </tr>
     `
     )
@@ -111,7 +71,10 @@ function renderStudentSubjects() {
 }
 
 function makeJoinLink(code) {
-  return `https://attendiq.local/join/${encodeURIComponent(code)}`;
+  const origin = window.location.protocol.startsWith("http")
+    ? window.location.origin
+    : "https://securely-masculine-elliptic.ngrok-free.dev";
+  return `${origin}/join/${encodeURIComponent(code)}`;
 }
 
 function clearCreateForm() {
@@ -128,7 +91,7 @@ function clearCreateForm() {
   }
 }
 
-function createSubject(event) {
+async function submitSubjectForm(event) {
   event.preventDefault();
   const nameInput = document.getElementById("subjectName");
   const codeInput = document.getElementById("subjectCode");
@@ -151,40 +114,52 @@ function createSubject(event) {
     return;
   }
 
-  if (editingSubjectId) {
-    const subject = facultySubjects.find((item) => item.id === editingSubjectId);
-    if (subject) {
-      subject.name = name;
-      subject.code = code;
-      subject.semester = semester;
-      subject.section = section;
-      subject.description = description;
-      subject.joinLink = makeJoinLink(subject.code);
+  if (!facultyCurrentUser) {
+    if (statusMessage) {
+      statusMessage.textContent = "Unable to resolve faculty account.";
+      statusMessage.style.color = "#c21f3c";
+    }
+    return;
+  }
+
+  const payload = {
+    name,
+    code,
+    faculty_id: facultyCurrentUser.id,
+    department_id: facultyCurrentUser.department_id,
+    semester: parseInt(semester, 10),
+    credits: 3,
+  };
+
+  try {
+    if (editingSubjectId) {
+      const updated = await updateSubject(editingSubjectId, payload);
+      const index = facultySubjects.findIndex((item) => item.id === editingSubjectId);
+      if (index !== -1) {
+        facultySubjects[index] = { ...facultySubjects[index], ...updated };
+      }
       if (statusMessage) {
         statusMessage.textContent = "Subject updated successfully.";
         statusMessage.style.color = "#14a44d";
       }
+    } else {
+      const created = await createSubject(payload);
+      facultySubjects.unshift(created);
+      if (statusMessage) {
+        statusMessage.textContent = "Subject created successfully.";
+        statusMessage.style.color = "#14a44d";
+      }
     }
-  } else {
-    facultySubjects.unshift({
-      id: `SUBJ-${Date.now()}`,
-      name,
-      code,
-      semester,
-      section,
-      enrolled: 0,
-      description,
-      joinLink: makeJoinLink(code),
-      status: "Active",
-    });
+
+    renderFacultySubjects();
+    clearCreateForm();
+  } catch (err) {
+    console.error(err);
     if (statusMessage) {
-      statusMessage.textContent = "Subject created successfully.";
-      statusMessage.style.color = "#14a44d";
+      statusMessage.textContent = err.message || 'Unable to save subject.';
+      statusMessage.style.color = '#c21f3c';
     }
   }
-
-  renderFacultySubjects();
-  clearCreateForm();
 }
 
 function handleSubjectTableAction(action, subjectId) {
@@ -199,7 +174,7 @@ function handleSubjectTableAction(action, subjectId) {
       editSubject(subject);
       break;
     case "delete":
-      deleteSubject(subject);
+      removeSubject(subject);
       break;
     case "qr":
       openShareDialog(subjectId);
@@ -213,7 +188,7 @@ function handleSubjectTableAction(action, subjectId) {
 }
 
 function viewSubject(subject) {
-  window.alert(`Subject:\n${subject.name}\n\nCode: ${subject.code}\nSemester: ${subject.semester}\nSection: ${subject.section}\nStudents Enrolled: ${subject.enrolled}\n\nDescription:\n${subject.description}`);
+  window.alert(`Subject:\n${subject.name}\n\nCode: ${subject.code}\nSemester: ${subject.semester}\nSection: ${subject.section}\nStudents Enrolled: ${subject.enrolled ?? 0}\n\nDescription:\n${subject.description || 'No description provided.'}`);
 }
 
 function editSubject(subject) {
@@ -222,7 +197,7 @@ function editSubject(subject) {
   document.getElementById("subjectCode").value = subject.code;
   document.getElementById("subjectSemester").value = subject.semester;
   document.getElementById("subjectSection").value = subject.section;
-  document.getElementById("subjectDescription").value = subject.description;
+  document.getElementById("subjectDescription").value = subject.description || "";
   const statusMessage = document.getElementById("subjectFormStatus");
   if (statusMessage) {
     statusMessage.textContent = "Editing subject. Make updates and click Save subject.";
@@ -231,15 +206,20 @@ function editSubject(subject) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function deleteSubject(subject) {
+function removeSubject(subject) {
   if (!window.confirm(`Delete subject ${subject.name}? This action cannot be undone.`)) {
     return;
   }
-  const index = facultySubjects.findIndex((item) => item.id === subject.id);
-  if (index !== -1) {
-    facultySubjects.splice(index, 1);
-    renderFacultySubjects();
-  }
+
+  deleteSubject(subject.id)
+    .then(() => {
+      facultySubjects = facultySubjects.filter((item) => item.id !== subject.id);
+      renderFacultySubjects();
+    })
+    .catch((err) => {
+      console.error(err);
+      window.alert(err.message || 'Unable to delete subject.');
+    });
 }
 
 function openShareDialog(subjectId) {
@@ -249,12 +229,12 @@ function openShareDialog(subjectId) {
   currentShareSubject = subject;
   document.getElementById("shareSubjectName").value = subject.name;
   document.getElementById("shareSubjectCode").value = subject.code;
-  document.getElementById("shareJoinLink").value = subject.joinLink;
+  document.getElementById("shareJoinLink").value = subject.joinLink || makeJoinLink(subject.code);
 
   const qrContainer = document.getElementById("shareQrCode");
   qrContainer.innerHTML = "";
   new QRCode(qrContainer, {
-    text: subject.joinLink,
+    text: document.getElementById("shareJoinLink").value,
     width: 200,
     height: 200,
     colorDark: "#102a43",
@@ -328,8 +308,8 @@ function shareSubject() {
   const subject = currentShareSubject;
   if (!subject) return;
 
-  const text = `Subject: ${subject.name}\nCode: ${subject.code}\nLink: ${subject.joinLink}`;
-  const url = subject.joinLink;
+  const text = `Subject: ${subject.name}\nCode: ${subject.code}\nLink: ${subject.joinLink || makeJoinLink(subject.code)}`;
+  const url = subject.joinLink || makeJoinLink(subject.code);
 
   if (navigator.share) {
     navigator
@@ -359,208 +339,20 @@ function addStudentSubject(subject) {
   renderStudentSubjects();
 }
 
-function joinByCode(event) {
-  event.preventDefault();
-  const input = document.getElementById("joinSubjectCode");
-  const status = document.getElementById("studentJoinStatus");
-  const code = input.value.trim().toUpperCase();
-
-  if (!code) {
-    status.textContent = "Enter a valid subject code.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  const subject = facultySubjects.find((item) => item.code === code);
-  if (!subject) {
-    status.textContent = "Subject code not recognized.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  addStudentSubject(subject);
-  status.textContent = `Joined ${subject.name}.`;
-  status.style.color = "#14a44d";
-  input.value = "";
-}
-
-function joinByLink(event) {
-  event.preventDefault();
-  const input = document.getElementById("joinSubjectLink");
-  const status = document.getElementById("studentJoinStatus");
-  const value = input.value.trim();
-
-  if (!value) {
-    status.textContent = "Enter a valid join link.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  const match = value.match(/join\/([^\/\s]+)/i);
-  if (!match) {
-    status.textContent = "Unable to parse the join link.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  const code = match[1].toUpperCase();
-  const subject = facultySubjects.find((item) => item.code === code);
-  if (!subject) {
-    status.textContent = "Join link is invalid or expired.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  addStudentSubject(subject);
-  status.textContent = `Joined ${subject.name} via join link.`;
-  status.style.color = "#14a44d";
-  input.value = "";
-}
-
-function scanSuccess(decodedText) {
-  const status = document.getElementById("qrScanStatus");
-  if (!decodedText) return;
-
-  const match = decodedText.match(/join\/([^\/\s]+)/i);
-  if (!match) {
-    status.textContent = "Scanned QR code is not a valid join link.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  const code = match[1].toUpperCase();
-  const subject = facultySubjects.find((item) => item.code === code);
-  if (!subject) {
-    status.textContent = "Scanned subject code is not recognized.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  addStudentSubject(subject);
-  status.textContent = `Successfully joined ${subject.name}.`;
-  status.style.color = "#14a44d";
-  stopQrScanner();
-}
-
-function scanError() {
-  const status = document.getElementById("qrScanStatus");
-  if (status) {
-    status.textContent = "Scanning... point the camera at a subject QR code.";
-    status.style.color = "#52637a";
+async function loadFacultySubjects(user) {
+  facultyCurrentUser = user;
+  try {
+    const subjects = await getSubjects();
+    facultySubjects = Array.isArray(subjects) ? subjects.filter((subject) => subject.faculty_id === user.id) : [];
+    renderFacultySubjects();
+  } catch (error) {
+    console.error('Unable to load faculty subjects', error);
   }
 }
 
-function startQrScanner() {
-  const reader = document.getElementById("qr-reader");
-  const status = document.getElementById("qrScanStatus");
-  if (!reader) return;
-
-  if (!window.Html5Qrcode) {
-    status.textContent = "QR scanning library failed to load.";
-    status.style.color = "#c21f3c";
-    return;
-  }
-
-  if (qrScanning) {
-    stopQrScanner();
-    return;
-  }
-
-  html5QrCode = new Html5Qrcode("qr-reader");
-  html5QrCode
-    .start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      scanSuccess,
-      scanError
-    )
-    .then(() => {
-      qrScanning = true;
-      status.textContent = "Scanning for subject join QR codes...";
-      status.style.color = "#0f4bb2";
-      document.getElementById("qrToggleButton").textContent = "Stop scanning";
-    })
-    .catch(() => {
-      status.textContent = "Unable to start camera. Please allow access.";
-      status.style.color = "#c21f3c";
-    });
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
-function stopQrScanner() {
-  const status = document.getElementById("qrScanStatus");
-  if (!html5QrCode || !qrScanning) return;
-
-  html5QrCode.stop().then(() => {
-    html5QrCode.clear();
-    qrScanning = false;
-    if (status) {
-      status.textContent = "QR scanning stopped.";
-      status.style.color = "#52637a";
-    }
-    document.getElementById("qrToggleButton").textContent = "Start QR scan";
-  });
-}
-
-function initSubjectModule() {
-  const facultyForm = document.getElementById("subjectForm");
-  const resetSubjectForm = document.getElementById("resetSubjectForm");
-  const joinCodeButton = document.getElementById("joinCodeButton");
-  const joinLinkButton = document.getElementById("joinLinkButton");
-  const shareClose = document.getElementById("closeShareDialog");
-  const copyCode = document.getElementById("copySubjectCode");
-  const copyLink = document.getElementById("copyJoinLink");
-  const downloadQr = document.getElementById("downloadQrCode");
-  const shareButton = document.getElementById("shareSubjectButton");
-  const qrToggle = document.getElementById("qrToggleButton");
-
-  if (facultyForm) {
-    facultyForm.addEventListener("submit", createSubject);
-  }
-
-  if (resetSubjectForm) {
-    resetSubjectForm.addEventListener("click", clearCreateForm);
-  }
-
-  if (joinCodeButton) {
-    joinCodeButton.addEventListener("click", joinByCode);
-  }
-
-  if (joinLinkButton) {
-    joinLinkButton.addEventListener("click", joinByLink);
-  }
-
-  if (shareClose) {
-    shareClose.addEventListener("click", closeShareDialog);
-  }
-
-  if (copyCode) {
-    copyCode.addEventListener("click", () => {
-      const value = document.getElementById("shareSubjectCode").value;
-      copyToClipboard(value, "shareStatus");
-    });
-  }
-
-  if (copyLink) {
-    copyLink.addEventListener("click", () => {
-      const value = document.getElementById("shareJoinLink").value;
-      copyToClipboard(value, "shareStatus");
-    });
-  }
-
-  if (downloadQr) {
-    downloadQr.addEventListener("click", downloadQrCode);
-  }
-
-  if (shareButton) {
-    shareButton.addEventListener("click", shareSubject);
-  }
-
-  if (qrToggle) {
-    qrToggle.addEventListener("click", startQrScanner);
-  }
-
-  renderFacultySubjects();
-  renderStudentSubjects();
-}
-
-window.addEventListener("DOMContentLoaded", initSubjectModule);

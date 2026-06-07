@@ -72,7 +72,13 @@ a {
   place-items: center;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.16);
-  color: #ffffff;
+  background-image: url("../images/logo.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 60%;
+  color: transparent;
+  text-indent: 100%;
+  overflow: hidden;
   font-weight: 700;
 }
 

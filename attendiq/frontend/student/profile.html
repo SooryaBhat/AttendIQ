@@ -19,6 +19,14 @@
             padding: 2rem;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+        }
+        .profile-avatar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            min-width: 120px;
         }
         .profile-avatar {
             width: 120px;
@@ -32,6 +40,22 @@
             font-size: 48px;
             font-weight: bold;
             flex-shrink: 0;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+        }
+        .profile-avatar-container button {
+            border: none;
+            border-radius: 10px;
+            padding: 0.85rem 1.1rem;
+            background: #f5f5f5;
+            color: #102a43;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .profile-avatar-container button:hover {
+            background: #e5e9f2;
         }
         .profile-info h2 {
             margin: 0 0 0.5rem 0;
@@ -242,7 +266,11 @@
 
         <main class="dashboard-content profile-container">
             <div class="profile-header">
-                <div class="profile-avatar" id="profileAvatar">S</div>
+                <div class="profile-avatar-container">
+                    <div class="profile-avatar" id="profileAvatar">S</div>
+                    <input id="profilePictureInput" type="file" accept="image/*" hidden />
+                    <button id="uploadProfilePictureBtn" type="button">Update Photo</button>
+                </div>
                 <div class="profile-info">
                     <h2 id="profileName">Loading...</h2>
                     <p class="role">Student</p>
@@ -271,7 +299,7 @@
                     </div>
                 </div>
 
-                <div class="profile-card">
+                    <div class="profile-card">
                     <h3>Contact Information</h3>
                     <div class="field">
                         <div class="field-label">Email</div>
@@ -326,7 +354,7 @@
                     <div class="field">
                         <div class="field-label">Account Status</div>
                         <div class="field-value">
-                            <span class="status-badge active">Active</span>
+                            <span class="status-badge active" id="accountStatusBadge">Active</span>
                         </div>
                     </div>
                     <div class="field">
@@ -346,46 +374,127 @@
     <script src="../assets/js/dashboard.js"></script>
     <script src="../assets/js/api.js"></script>
     <script>
+        const profilePictureInput = document.getElementById('profilePictureInput');
+        const uploadProfilePictureBtn = document.getElementById('uploadProfilePictureBtn');
+
+        function escapeText(value) {
+            return String(value || '—').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function profilePictureStorageKey(userId) {
+            return `attendiq_profile_pic_${userId}`;
+        }
+
+        function loadProfilePicture(userId) {
+            const storedImage = localStorage.getItem(profilePictureStorageKey(userId));
+            const avatar = document.getElementById('profileAvatar');
+            if (storedImage) {
+                avatar.style.backgroundImage = `url('${storedImage}')`;
+                avatar.textContent = '';
+            }
+        }
+
+        function saveProfilePicture(userId, dataUrl) {
+            localStorage.setItem(profilePictureStorageKey(userId), dataUrl);
+        }
+
+        uploadProfilePictureBtn.addEventListener('click', () => profilePictureInput.click());
+
+        profilePictureInput.addEventListener('change', async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const imageUrl = reader.result;
+                const avatar = document.getElementById('profileAvatar');
+                avatar.style.backgroundImage = `url('${imageUrl}')`;
+                avatar.textContent = '';
+                const user = getStoredUser();
+                if (user?.id) {
+                    saveProfilePicture(user.id, imageUrl);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('attendiq_token');
             if (!token) return window.location.href = '../auth/login.html';
 
             try {
                 const user = await fetchCurrentUser();
+                loadProfilePicture(user.id);
                 displayProfile(user);
-
-                // Load attendance stats
-                try {
-                    const subjects = await request(`/subjects/students/${user.id}`);
-                    document.getElementById('studentSubjects').textContent = subjects.length || '0';
-                } catch (e) {
-                    console.log('Could not load subjects');
-                }
+                await loadStudentDetails(user);
             } catch (error) {
                 console.error('Failed to load profile', error);
                 window.location.href = '../auth/login.html';
             }
 
-            // Button handlers
             document.getElementById('enrollFaceBtn').onclick = () => window.location.href = 'register_face.html';
             document.getElementById('enrollVoiceBtn').onclick = () => window.location.href = 'register_voice.html';
         });
 
+        async function loadStudentDetails(user) {
+            if (user.department_id) {
+                try {
+                    const depts = await getDepartments();
+                    const dept = depts.find((d) => d.id === user.department_id);
+                    document.getElementById('studentDept').textContent = dept ? dept.name : '—';
+                } catch (e) {
+                    document.getElementById('studentDept').textContent = '—';
+                }
+            }
+
+            document.getElementById('studentSemester').textContent = user.semester || '—';
+            document.getElementById('studentSection').textContent = user.section || '—';
+            document.getElementById('profileStatus').textContent = user.is_active ? 'Active Account' : 'Inactive Account';
+            document.getElementById('accountStatusBadge').textContent = user.is_active ? 'Active' : 'Inactive';
+            document.getElementById('accountStatusBadge').className = `status-badge ${user.is_active ? 'active' : 'inactive'}`;
+
+            try {
+                const subjects = await request(`/subjects/students/${user.id}`);
+                document.getElementById('studentSubjects').textContent = Array.isArray(subjects) ? subjects.length : '0';
+            } catch (e) {
+                document.getElementById('studentSubjects').textContent = '—';
+            }
+
+            try {
+                const history = await getStudentAttendanceHistory();
+                const present = history.filter((record) => record.status === 'present').length;
+                const total = history.length;
+                const absent = total - present;
+                const percent = total ? Math.round((present / total) * 100) : 0;
+                document.getElementById('attendancePercent').textContent = `${percent}%`;
+                document.getElementById('presentCount').textContent = present;
+                document.getElementById('absentCount').textContent = absent;
+            } catch (e) {
+                document.getElementById('attendancePercent').textContent = '—';
+                document.getElementById('presentCount').textContent = '—';
+                document.getElementById('absentCount').textContent = '—';
+            }
+        }
+
         function displayProfile(user) {
-            const initials = user.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
-            document.getElementById('profileAvatar').textContent = initials;
+            const initials = (user.full_name || 'Student').split(' ').map((n) => n[0]).join('').toUpperCase();
+            const avatar = document.getElementById('profileAvatar');
+            if (!avatar.style.backgroundImage) {
+                avatar.textContent = initials;
+            }
             document.getElementById('profileName').textContent = user.full_name || 'Student';
             document.getElementById('studentEmail').textContent = user.email || '—';
             document.getElementById('studentUSN').textContent = user.roll_number || '—';
             document.getElementById('studentPhone').textContent = user.phone || '—';
-            
-            // Biometric status
+
             const faceStatus = user.face_enrolled ? 'Registered' : 'Not Registered';
             const voiceStatus = user.voice_enrolled ? 'Registered' : 'Not Registered';
             document.getElementById('faceStatus').textContent = faceStatus;
             document.getElementById('voiceStatus').textContent = voiceStatus;
 
-            // Account creation date
             if (user.account_created_at) {
                 const date = new Date(user.account_created_at).toLocaleDateString();
                 document.getElementById('accountCreated').textContent = date;

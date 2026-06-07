@@ -62,7 +62,13 @@ a {
   place-items: center;
   border-radius: 14px;
   background: linear-gradient(135deg, #0f4bb2, #1f75d1);
-  color: #fff;
+  background-image: url("../images/logo.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 55%;
+  color: transparent;
+  text-indent: 100%;
+  overflow: hidden;
   font-weight: 700;
   font-size: 1rem;
 }
