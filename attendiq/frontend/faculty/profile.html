@@ -95,6 +95,7 @@
           <div class="info-row"><span class="label">Phone</span><span class="value" id="infoPhone">—</span></div>
           <div class="info-row"><span class="label">Department</span><span class="value" id="infoDept">—</span></div>
           <div class="info-row"><span class="label">Status</span><span class="value" id="infoStatus">—</span></div>
+          <div class="info-row"><span class="label">Last Login</span><span class="value" id="infoLastLogin">—</span></div>
         </div>
         <div class="info-card">
           <h4>Teaching Stats</h4>
@@ -143,6 +144,12 @@
           document.getElementById('infoDept').textContent  = name;
         } catch(e) { /* ignore */ }
       }
+
+      const lastLoginValue = localStorage.getItem('attendiq_last_login');
+      const lastLoginDate = lastLoginValue ? new Date(lastLoginValue) : null;
+      document.getElementById('infoLastLogin').textContent = lastLoginDate && !isNaN(lastLoginDate)
+        ? lastLoginDate.toLocaleString()
+        : '—';
 
       // Load assigned subjects
       await loadSubjects(user.id);

@@ -361,12 +361,15 @@
                         <div class="field-label">Account Created</div>
                         <div class="field-value" id="accountCreated">—</div>
                     </div>
+                    <div class="field">
+                        <div class="field-label">Last Login</div>
+                        <div class="field-value" id="lastLogin">—</div>
+                    </div>
                 </div>
             </div>
 
             <div class="action-buttons">
                 <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
-                <button class="btn btn-primary" onclick="window.location.href='#settings'">Edit Profile</button>
             </div>
         </main>
     </div>
@@ -499,6 +502,12 @@
                 const date = new Date(user.account_created_at).toLocaleDateString();
                 document.getElementById('accountCreated').textContent = date;
             }
+
+            const lastLoginValue = localStorage.getItem('attendiq_last_login');
+            const lastLoginDate = lastLoginValue ? new Date(lastLoginValue) : null;
+            document.getElementById('lastLogin').textContent = lastLoginDate && !isNaN(lastLoginDate)
+                ? lastLoginDate.toLocaleString()
+                : '—';
 
             document.getElementById('userName').textContent = user.full_name?.split(' ')[0] || 'Student';
         }

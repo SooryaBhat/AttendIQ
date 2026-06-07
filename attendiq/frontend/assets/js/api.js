@@ -1,7 +1,20 @@
-const API_BASE_URL =
-  "https://securely-masculine-elliptic.ngrok-free.dev";
+const API_BASE_URL = (() => {
+  const defaultUrl = "https://securely-masculine-elliptic.ngrok-free.dev";
+  if (typeof window === "undefined") return defaultUrl;
+
+  const { protocol, hostname, port } = window.location;
+  const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
+  const hasHttp = protocol.startsWith("http");
+
+  if (hasHttp && isLocalhost) {
+    return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
+  }
+
+  return defaultUrl;
+})();
+
 function ensureFavicon() {
-  const iconHref = "/assets/images/logo.svg";
+  const iconHref = new URL("../assets/images/logo.svg", document.baseURI).href;
 
   let iconLink = document.querySelector("link[rel~='icon']");
 
@@ -32,11 +45,13 @@ function getStoredUser() {
 function saveAuthData(token, user) {
   localStorage.setItem("attendiq_token", token);
   localStorage.setItem("attendiq_user", JSON.stringify(user));
+  localStorage.setItem("attendiq_last_login", new Date().toISOString());
 }
 
 function clearAuthData() {
   localStorage.removeItem("attendiq_token");
   localStorage.removeItem("attendiq_user");
+  localStorage.removeItem("attendiq_last_login");
 }
 
 function getAuthHeaders() {

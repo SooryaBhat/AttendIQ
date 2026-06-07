@@ -16,7 +16,7 @@ const topbarActions = document.querySelector(".topbar-actions");
 const userMenuToggle = document.querySelector(".user-menu-toggle");
 const userMenu = document.querySelector(".user-menu");
 const notificationButton = document.querySelector(".notification-button");
-const logoutLinks = document.querySelectorAll("a[href*='#logout'], a[href*='#signout'], .logout-link");
+const logoutLinks = document.querySelectorAll("a[href*='#logout'], a[href*='#signout'], .logout-link, button.logout-button");
 const userNameElement = document.querySelector(".user-menu-toggle strong");
 const userSubtextElement = document.querySelector(".user-menu-toggle small");
 let sidebarBackdrop = null;
@@ -50,6 +50,10 @@ function toggleUserMenu() {
   userMenuToggle.setAttribute("aria-expanded", String(userMenu.classList.contains("menu-open")));
 }
 
+function stripUnusedSettingsLinks() {
+  document.querySelectorAll("a[href='#settings']").forEach((link) => link.remove());
+}
+
 function closeUserMenu(event) {
   if (!userMenu || !userMenuToggle) return;
   if (userMenu.contains(event.target) || userMenuToggle.contains(event.target)) {
@@ -68,6 +72,21 @@ function createSidebarBackdrop() {
     sidebar.classList.remove("sidebar-open");
     sidebarBackdrop.classList.remove("visible");
   });
+}
+
+function injectSidebarLogout() {
+  if (!sidebar) return;
+  const footer = sidebar.querySelector(".sidebar-footer");
+  if (!footer || footer.querySelector("button.logout-button")) return;
+
+  const logoutBtn = document.createElement("button");
+  logoutBtn.type = "button";
+  logoutBtn.className = "logout-button";
+  logoutBtn.textContent = "Logout";
+  logoutBtn.title = "Sign out";
+  const referenceNode = footer.querySelector(".sidebar-toggle");
+  footer.insertBefore(logoutBtn, referenceNode ? referenceNode.nextSibling : null);
+  logoutBtn.addEventListener("click", logout);
 }
 
 function updateBackdropState() {
@@ -140,6 +159,8 @@ function initDashboardLayout() {
 
   ensureMobileSidebarButton();
   createSidebarBackdrop();
+  injectSidebarLogout();
+  stripUnusedSettingsLinks();
 
   if (userMenuToggle) {
     userMenuToggle.addEventListener("click", toggleUserMenu);

@@ -83,6 +83,7 @@
           <div class="info-row"><span class="label">Email</span><span class="value" id="infoEmail">—</span></div>
           <div class="info-row"><span class="label">Phone</span><span class="value" id="infoPhone">—</span></div>
           <div class="info-row"><span class="label">Status</span><span class="value"><span class="badge-ok">Active</span></span></div>
+          <div class="info-row"><span class="label">Last Login</span><span class="value" id="infoLastLogin">—</span></div>
         </div>
         <div class="info-card">
           <h4>Platform Summary</h4>
@@ -109,6 +110,12 @@
       document.getElementById('topbarName').textContent = user.full_name?.split(' ')[0] || 'Admin';
       document.getElementById('infoEmail').textContent  = user.email || '—';
       document.getElementById('infoPhone').textContent  = user.phone || '—';
+
+      const lastLoginValue = localStorage.getItem('attendiq_last_login');
+      const lastLoginDate = lastLoginValue ? new Date(lastLoginValue) : null;
+      document.getElementById('infoLastLogin').textContent = lastLoginDate && !isNaN(lastLoginDate)
+        ? lastLoginDate.toLocaleString()
+        : '—';
 
       const summary = await getSuperAdminSummary();
       document.getElementById('statDepts').textContent    = summary.total_departments ?? '—';
