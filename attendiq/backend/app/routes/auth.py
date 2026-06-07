@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.dependencies.auth import get_current_user
 from app.models.user import TokenResponse, UserLogin, UserRegister, UserResponse
@@ -28,6 +31,7 @@ def login_user(credentials: UserLogin) -> TokenResponse:
     try:
         return login_user_service(credentials)
     except Exception as exc:
+        logger.exception("Error during login for %s: %s", getattr(credentials, 'email', '<unknown>'), exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),

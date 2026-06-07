@@ -290,10 +290,27 @@ def login_user(payload: UserLogin) -> TokenResponse:
 
     profile = db_response.data
 
+    # Emit debug info about stored password hash for diagnosis
+    try:
+        stored_hash = profile.get("password_hash", "")
+        print("HASH LENGTH:", len(stored_hash))
+        print("HASH PREFIX:", stored_hash[:20])
+        print("HASH REPR:", repr(stored_hash))
+    except Exception as e:
+        # Non-fatal: continue to verification but log to aid debugging
+        logger.debug("Could not print hash debug info: %s", e)
+
     if not profile.get("is_active"):
         raise ValueError("Account is deactivated. Contact your administrator.")
 
-    if not verify_password(payload.password, profile["password_hash"]):
+    try:
+        ok = verify_password(payload.password, profile["password_hash"])
+    except Exception:
+        logger.exception("Error while verifying password for %s", payload.email)
+        # Re-raise so caller route can convert to HTTP response
+        raise
+
+    if not ok:
         raise ValueError("Invalid email or password.")
 
     # Build JWT payload
