@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Activate Account | AttendIQ</title>
+    <link rel="stylesheet" href="assets/css/global.css" />
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 3rem;
+            max-width: 500px;
+            width: 100%;
+            margin: 1rem;
+        }
+        .logo-section {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+        }
+        h1 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .step {
+            text-align: center;
+            padding: 1rem;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        .step.active {
+            background: #667eea;
+            color: white;
+        }
+        .step-num {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 0.25rem;
+        }
+        .step-text {
+            font-size: 12px;
+        }
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 14px;
+        }
+        .message.error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+        .message.success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+        .message.info {
+            background: #eef;
+            color: #33c;
+            border: 1px solid #ccf;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 2rem 1.5rem;
+            }
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-section">
+            <div class="logo-icon">AIQ</div>
+            <h1>AttendIQ</h1>
+            <p class="subtitle">Activate Your Account</p>
+        </div>
+
+        <div class="steps">
+            <div class="step active">
+                <div class="step-num">1</div>
+                <div class="step-text">Set Password</div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-text">Login</div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-text">Complete Setup</div>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="form-group">
+            <label for="password">Create Password</label>
+            <input type="password" id="password" placeholder="At least 6 characters" />
+        </div>
+
+        <div class="form-group">
+            <label for="password-confirm">Confirm Password</label>
+            <input type="password" id="password-confirm" placeholder="Re-enter your password" />
+        </div>
+
+        <button class="button" id="activateBtn" onclick="handleActivation()">
+            Activate Account
+        </button>
+
+        <p style="text-align: center; margin-top: 1rem; color: #666; font-size: 13px;">
+            After activation, you'll be able to login and complete biometric registration.
+        </p>
+    </div>
+
+    <script src="assets/js/api.js"></script>
+    <script>
+        let activationToken = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Extract token from URL
+            const params = new URLSearchParams(window.location.search);
+            activationToken = params.get('token') || window.location.pathname.split('/').pop();
+
+            if (!activationToken) {
+                showMessage('Invalid activation link. Please contact your department admin.', 'error');
+                document.getElementById('activateBtn').disabled = true;
+            }
+        });
+
+        function showMessage(text, type) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = `message ${type}`;
+        }
+
+        async function handleActivation() {
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password-confirm').value;
+
+            if (!password || !passwordConfirm) {
+                showMessage('Please enter both passwords', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                showMessage('Passwords do not match', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('activateBtn');
+            btn.disabled = true;
+            btn.textContent = 'Activating...';
+
+            try {
+                const result = await request(`/students/activate/${activationToken}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password }),
+                });
+
+                showMessage('✓ Account activated! Redirecting to login...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'auth/login.html';
+                }, 2000);
+            } catch (error) {
+                btn.disabled = false;
+                btn.textContent = 'Activate Account';
+                showMessage(error.message || 'Activation failed. Please try again.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

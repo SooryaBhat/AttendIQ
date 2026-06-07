@@ -15,6 +15,9 @@ from app.services.student_service import (
     get_student,
     list_students,
     update_student,
+    create_student_with_activation,
+    activate_student_account,
+    bulk_import_students,
 )
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -70,5 +73,89 @@ def delete_student_by_id(student_id: UUID, current_user: UserResponse = Depends(
         return {"deleted": True}
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ============================================================
+#  STUDENT ACCOUNT ACTIVATION & BULK IMPORT
+# ============================================================
+
+class StudentActivationCreate(BaseModel):
+    full_name: str
+    email: str
+    usn: str
+    department_id: UUID
+    semester: int
+    section: str
+
+
+from pydantic import BaseModel
+
+
+class StudentActivationPayload(BaseModel):
+    password: str
+
+
+@router.post("/create-with-activation", status_code=status.HTTP_201_CREATED)
+def create_student_activation(payload: StudentActivationCreate, current_user: UserResponse = Depends(get_current_user)) -> dict:
+    """
+    Create student account with activation token (for dept admins).
+    Returns activation token to send to student.
+    """
+    try:
+        token_info = create_student_with_activation(
+            full_name=payload.full_name,
+            email=payload.email,
+            usn=payload.usn,
+            department_id=str(payload.department_id),
+            semester=payload.semester,
+            section=payload.section,
+        )
+        return token_info
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/activate/{token}", response_model=dict)
+def activate_student(token: str, payload: StudentActivationPayload) -> dict:
+    """
+    Activate a student account using activation token.
+    Student sets password and account becomes active.
+    """
+    try:
+        user = activate_student_account(token, payload.password)
+        return {
+            "success": True,
+            "user": user,
+            "message": "Account activated successfully. You can now login.",
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+
+@router.post("/{department_id}/bulk-import", status_code=status.HTTP_201_CREATED)
+def bulk_import_students_route(department_id: UUID, students: list[StudentActivationCreate], current_user: UserResponse = Depends(get_current_user)) -> dict:
+    """
+    Bulk import students for a department (CSV → JSON).
+    Creates accounts with activation tokens.
+    Dept admin must distribute activation tokens to students.
+    """
+    try:
+        students_data = [
+            {
+                "full_name": s.full_name,
+                "email": s.email,
+                "usn": s.usn,
+                "department_id": str(department_id),
+                "semester": s.semester,
+                "section": s.section,
+            }
+            for s in students
+        ]
+        result = bulk_import_students(students_data)
+        return result
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

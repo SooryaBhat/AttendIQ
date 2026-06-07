@@ -158,3 +158,156 @@ def delete_student(student_id: str) -> None:
 
     # FIX: .delete().eq(...).execute()  — no .select() chaining
     supabase.table("profiles").delete().eq("id", student_id).execute()
+
+
+# ============================================================
+#  STUDENT ACCOUNT ACTIVATION
+# ============================================================
+
+import string
+import random
+from datetime import datetime, timedelta
+from app.models.user import UserResponse, UserRole
+
+
+def generate_activation_token() -> str:
+    """Generate a secure activation token."""
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=64))
+
+
+def create_student_with_activation(
+    full_name: str,
+    email: str,
+    usn: str,
+    department_id: str,
+    semester: int,
+    section: str,
+) -> dict:
+    """
+    Create a student account with activation token (not yet active).
+    Returns activation token that must be sent to student.
+    """
+    token = generate_activation_token()
+    expires = datetime.utcnow() + timedelta(days=7)  # Token valid for 7 days
+    
+    student_id = str(uuid4())
+    profile_data = {
+        "id": student_id,
+        "full_name": full_name,
+        "email": email,
+        "roll_number": usn,
+        "department_id": str(department_id),
+        "semester": semester,
+        "section": section,
+        "role": "student",
+        "is_active": False,
+        "activation_token": token,
+        "activation_expires": expires.isoformat(),
+        "password_hash": "pending",
+        "face_enrolled": False,
+        "voice_enrolled": False,
+    }
+    
+    response = supabase.table("profiles").insert(profile_data).execute()
+    
+    if not response.data:
+        raise RuntimeError("Failed to create student account")
+    
+    return {
+        "student_id": student_id,
+        "activation_token": token,
+        "activation_url": f"/activate-account/{token}",
+        "expires_at": expires.isoformat(),
+    }
+
+
+def activate_student_account(token: str, password: str) -> UserResponse:
+    """
+    Activate a student account by validating token and setting password.
+    """
+    response = (
+        supabase.table("profiles")
+        .select("*")
+        .eq("activation_token", token)
+        .single()
+        .execute()
+    )
+    
+    if not response.data:
+        raise ValueError("Invalid or expired activation token")
+    
+    student = response.data
+    
+    # Check if token has expired
+    expires_at = datetime.fromisoformat(student["activation_expires"])
+    if datetime.utcnow() > expires_at:
+        raise ValueError("Activation token has expired")
+    
+    # Update student account to activate
+    update_response = (
+        supabase.table("profiles")
+        .update({
+            "password_hash": hash_password(password),
+            "is_active": True,
+            "activation_token": None,
+            "activation_expires": None,
+        })
+        .eq("id", student["id"])
+        .execute()
+    )
+    
+    if not update_response.data:
+        raise ValueError("Failed to activate account")
+    
+    return UserResponse(
+        id=student["id"],
+        full_name=student["full_name"],
+        email=student["email"],
+        role=UserRole(student["role"]),
+        department_id=student.get("department_id"),
+        roll_number=student.get("roll_number"),
+        phone=student.get("phone"),
+        is_active=True,
+        face_enrolled=False,
+        voice_enrolled=False,
+    )
+
+
+def bulk_import_students(students_data: list) -> dict:
+    """
+    Bulk import students from CSV data.
+    Each item should have: full_name, email, usn, department_id, semester, section
+    Returns activation tokens for all successfully created students.
+    """
+    tokens = []
+    errors = []
+    
+    for idx, student in enumerate(students_data):
+        try:
+            token_info = create_student_with_activation(
+                full_name=student["full_name"],
+                email=student["email"],
+                usn=student["usn"],
+                department_id=student["department_id"],
+                semester=int(student.get("semester", 1)),
+                section=student.get("section", ""),
+            )
+            tokens.append({
+                "email": student["email"],
+                "student_id": token_info["student_id"],
+                "activation_token": token_info["activation_token"],
+                "activation_url": token_info["activation_url"],
+            })
+        except Exception as e:
+            errors.append({
+                "row": idx + 1,
+                "email": student.get("email"),
+                "error": str(e),
+            })
+    
+    return {
+        "imported": len(tokens),
+        "failed": len(errors),
+        "activation_tokens": tokens,
+        "errors": errors,
+    }
