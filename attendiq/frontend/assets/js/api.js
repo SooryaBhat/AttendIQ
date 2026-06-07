@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://securely-masculine-elliptic.ngrok-free.dev";
+const API_BASE_URL = "https://attendiq-nd3a.onrender.com";
 
 function getAuthToken() {
   return localStorage.getItem("attendiq_token");
