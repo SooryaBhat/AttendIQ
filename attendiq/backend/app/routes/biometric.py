@@ -13,6 +13,7 @@
 # ============================================================
 
 import logging
+import os
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -25,12 +26,53 @@ from app.models.biometric import (
     VoiceRecognitionResponse,
 )
 from app.models.user import UserResponse
-from app.services.face_service import enroll_face, recognize_face
-from app.services.voice_service import enroll_voice, recognize_voice
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/biometric", tags=["Biometric Enrollment"])
+
+BIOMETRIC_DISABLED = os.getenv("DISABLE_BIOMETRIC", "false").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+
+
+def _ensure_biometric_enabled() -> None:
+    if BIOMETRIC_DISABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Biometric services are disabled on this deployment. "
+                "Set DISABLE_BIOMETRIC=false to enable them."
+            ),
+        )
+
+
+def _import_face_service():
+    try:
+        from app.services.face_service import enroll_face, recognize_face
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Face recognition libraries are not installed on this deployment. "
+                "Enable biometric support or install the required dependencies."
+            ),
+        ) from exc
+    return enroll_face, recognize_face
+
+
+def _import_voice_service():
+    try:
+        from app.services.voice_service import enroll_voice, recognize_voice
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Voice recognition libraries are not installed on this deployment. "
+                "Enable biometric support or install the required dependencies."
+            ),
+        ) from exc
+    return enroll_voice, recognize_voice
 
 # ── File type constants ───────────────────────────────────────
 
@@ -113,6 +155,9 @@ async def enroll_face_endpoint(
 ) -> FaceEnrollResponse:
     image_bytes = await image.read()
 
+    _ensure_biometric_enabled()
+    enroll_face, _ = _import_face_service()
+
     _validate_upload(
         content_type=image.content_type or "",
         allowed_types=_ALLOWED_IMAGE_TYPES,
@@ -159,6 +204,9 @@ async def recognize_face_endpoint(
     current_user: UserResponse = Depends(get_current_user),
 ) -> FaceRecognitionResponse:
     image_bytes = await image.read()
+
+    _ensure_biometric_enabled()
+    _, recognize_face = _import_face_service()
 
     _validate_upload(
         content_type=image.content_type or "",
@@ -214,6 +262,9 @@ async def recognize_voice_endpoint(
     current_user: UserResponse = Depends(get_current_user),
 ) -> VoiceRecognitionResponse:
     audio_bytes = await audio.read()
+
+    _ensure_biometric_enabled()
+    _, recognize_voice = _import_voice_service()
 
     _validate_upload(
         content_type=audio.content_type or "",
@@ -288,6 +339,9 @@ async def enroll_voice_endpoint(
         { success, student_id, embedding_size: 192, message }
     """
     audio_bytes = await audio.read()
+
+    _ensure_biometric_enabled()
+    enroll_voice, _ = _import_voice_service()
 
     _validate_upload(
         content_type=audio.content_type or "",
