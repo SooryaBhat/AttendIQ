@@ -60,3 +60,14 @@ if (loginForm) {
   loginForm.addEventListener("submit", handleLogin);
 }
 
+const passwordToggle = document.getElementById("passwordToggle");
+const passwordInput = document.getElementById("password");
+if (passwordToggle && passwordInput) {
+  passwordToggle.addEventListener("click", () => {
+    const isHidden = passwordInput.type === "password";
+    passwordInput.type = isHidden ? "text" : "password";
+    passwordToggle.textContent = isHidden ? "Hide" : "Show";
+    passwordToggle.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+  });
+}
+

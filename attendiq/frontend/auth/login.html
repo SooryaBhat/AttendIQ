@@ -10,53 +10,46 @@
     <link rel="stylesheet" href="../assets/css/auth.css" />
   </head>
   <body>
-    <div class="page-shell">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark"><img src="../assets/images/logo.svg" alt="AttendIQ logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="brand-text-fallback" style="display:none;">AIQ</span></span>
-          <div>
-            <h1>AttendIQ</h1>
-            <p>Campus attendance ERP</p>
-          </div>
-        </div>
-        <div class="topbar-actions">
-          <span>Secure access for institutional users only</span>
-          <a href="javascript:void(0);" class="support-link">Contact support</a>
-        </div>
-      </header>
-
-      <main class="login-layout">
-        <aside class="intro-panel">
-          <div class="panel-content">
-            <span class="eyebrow">Enterprise access</span>
-            <h2>Welcome back to AttendIQ</h2>
-            <p>
-              Log in with your campus credentials to manage departments, faculty, students,
-              and attendance workflows from a single administrative portal.
-            </p>
-
-            <div class="feature-list">
-              <div class="feature-item">
-                <span class="feature-icon">✓</span>
-                <p>Role-based dashboards</p>
-              </div>
-              <div class="feature-item">
-                <span class="feature-icon">✓</span>
-                <p>Department and student management</p>
-              </div>
-              <div class="feature-item">
-                <span class="feature-icon">✓</span>
-                <p>Attendance tracking and reporting</p>
-              </div>
+    <div class="auth-shell">
+      <main class="auth-grid">
+        <section class="auth-panel">
+          <div class="panel-brand">
+            <img src="../assets/images/logo.svg" alt="AttendIQ logo" class="panel-logo" onerror="this.style.display='none';" />
+            <div>
+              <h1>AttendIQ</h1>
+              <p>AI-Powered Smart Attendance Management System</p>
             </div>
           </div>
-        </aside>
 
-        <section class="login-panel">
-          <div class="login-card">
+          <div class="panel-copy">
+            <h2>Secure campus attendance access</h2>
+            <p>
+              Sign in to AttendIQ to manage attendance workflows, review reports, and access your role-based academic dashboard.
+            </p>
+          </div>
+
+          <div class="panel-highlights">
+            <div class="highlight-item">
+              <span class="highlight-dot"></span>
+              <span>Role-based campus access</span>
+            </div>
+            <div class="highlight-item">
+              <span class="highlight-dot"></span>
+              <span>Attendance, enrollment, and reporting</span>
+            </div>
+            <div class="highlight-item">
+              <span class="highlight-dot"></span>
+              <span>Secure institutional login</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="login-card">
+          <div class="card-inner">
             <div class="card-header">
-              <h2>Sign in</h2>
-              <p>Super Admin, Department Admin, Faculty, or Student</p>
+              <p class="eyebrow">Campus Portal</p>
+              <h2>Sign in to your account</h2>
+              <p>Use your institutional credentials to access AttendIQ.</p>
             </div>
 
             <form id="loginForm" class="login-form" autocomplete="off">
@@ -72,33 +65,36 @@
               </div>
 
               <div class="form-row">
-                <label for="email">Institutional email</label>
+                <label for="email">Email</label>
                 <input id="email" name="email" type="email" placeholder="name@college.edu" required />
               </div>
 
-              <div class="form-row">
+              <div class="form-row form-row-password">
                 <label for="password">Password</label>
-                <input id="password" name="password" type="password" placeholder="Enter your password" required />
+                <div class="password-field">
+                  <input id="password" name="password" type="password" placeholder="Enter your password" required />
+                  <button id="passwordToggle" type="button" class="password-toggle" aria-label="Show password">Show</button>
+                </div>
               </div>
 
               <div class="form-footer">
-                <button type="submit" class="btn-primary">Sign in</button>
+                <button type="submit" class="btn-primary">Sign In</button>
                 <span class="status-message" id="statusMessage"></span>
               </div>
             </form>
 
-            <div class="demo-details">
-              <p>Demo credentials for each role:</p>
-              <ul>
-                <li><strong>Super Admin:</strong> super@attendiq.edu / superadmin123</li>
-                <li><strong>Department Admin:</strong> deptadmin@attendiq.edu / deptadmin123</li>
-                <li><strong>Faculty:</strong> faculty@attendiq.edu / faculty123</li>
-                <li><strong>Student:</strong> student@attendiq.edu / student123</li>
-              </ul>
+            <div class="login-links">
+              <a href="#" class="link-secondary">Forgot Password?</a>
+              <a href="#" class="link-secondary">Contact Administrator</a>
             </div>
           </div>
         </section>
       </main>
+
+      <footer class="auth-footer">
+        <p>© 2026 AttendIQ</p>
+        <p>AI-Powered Attendance Management System</p>
+      </footer>
     </div>
 
     <script src="../assets/js/api.js"></script>

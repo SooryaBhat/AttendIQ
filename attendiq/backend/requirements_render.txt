@@ -1,0 +1,42 @@
+# ============================================================
+
+# AttendIQ Render Deployment
+
+# Lightweight Backend
+
+# ============================================================
+
+# FastAPI
+
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Environment
+
+python-dotenv==1.0.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# Authentication
+
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Uploads
+
+python-multipart==0.0.12
+aiofiles==24.1.0
+
+# Database
+
+supabase==2.10.0
+
+# Utilities
+
+requests
+numpy==1.26.4
+pandas
+scikit-learn
+Pillow==11.0.0
+scipy
+email-validator==2.3.0
