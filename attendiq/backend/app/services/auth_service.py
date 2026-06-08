@@ -28,6 +28,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # ============================================================
 
 def hash_password(password: str) -> str:
+    if pwd_context.identify(password):
+        raise ValueError(
+            "Attempted to hash a value that already appears to be a password hash. "
+            "Ensure raw passwords are passed to hash_password(), not existing hashes."
+        )
     return pwd_context.hash(password)
 
 
