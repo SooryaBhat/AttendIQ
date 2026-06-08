@@ -37,6 +37,12 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    print("PLAIN PASSWORD:", plain)
+    print("PLAIN LENGTH:", len(plain) if isinstance(plain, str) else "<non-string>")
+    print("HASH:", hashed[:25] if isinstance(hashed, str) else str(hashed)[:25])
+    print("HASH LENGTH:", len(hashed) if isinstance(hashed, str) else "<non-string>")
+    print("TYPE PLAIN:", type(plain))
+    print("TYPE HASHED:", type(hashed))
     return pwd_context.verify(plain, hashed)
 
 
@@ -277,7 +283,7 @@ def login_user(payload: UserLogin) -> TokenResponse:
     """
     # Debug: trace login flow
     print("LOGIN START")
-    print("EMAIL:", payload.email)
+    print("LOGIN EMAIL:", payload.email)
 
     # Fetch profile by email
     db_response = (
